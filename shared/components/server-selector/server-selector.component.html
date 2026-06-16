@@ -1,0 +1,49 @@
+<div class="server-selector" [class.single]="servers().length <= 1">
+  @if (loading()) {
+    <div class="loading-state">
+      <p class="label">current server</p>
+      <h2>searching nearest server...</h2>
+    </div>
+  } @else if (servers().length <= 1 && selectedServer()) {
+    <div class="single-server">
+      <p class="label">current server</p>
+      <h2>{{ selectedServer()!.name }}</h2>
+      @if (selectedServer()!.sponsorName) {
+        <p class="sponsor">
+          Sponsor:
+          @if (selectedServer()!.sponsorURL) {
+            <a [href]="selectedServer()!.sponsorURL" target="_blank" rel="noopener">
+              {{ selectedServer()!.sponsorName }}
+            </a>
+          } @else {
+            {{ selectedServer()!.sponsorName }}
+          }
+        </p>
+      }
+    </div>
+  } @else {
+    <p class="label">current server</p>
+    <p-select
+      [options]="servers()"
+      [ngModel]="selectedServer()"
+      (ngModelChange)="onServerSelect($event)"
+      optionLabel="name"
+      placeholder="Select a server"
+      styleClass="server-dropdown"
+      [disabled]="disabled()"
+      appendTo="body"
+    />
+    @if (selectedServer()?.sponsorName) {
+      <p class="sponsor">
+        Sponsor:
+        @if (selectedServer()!.sponsorURL) {
+          <a [href]="selectedServer()!.sponsorURL" target="_blank" rel="noopener">
+            {{ selectedServer()!.sponsorName }}
+          </a>
+        } @else {
+          {{ selectedServer()!.sponsorName }}
+        }
+      </p>
+    }
+  }
+</div>

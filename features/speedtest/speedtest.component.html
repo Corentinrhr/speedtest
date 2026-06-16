@@ -1,0 +1,132 @@
+<h1 class="title">Free and Open Source Speedtest.</h1>
+<p class="tagline">No Flash, No Java, No Websockets, No Bullsh*t</p>
+
+<app-server-selector
+  [servers]="servers()"
+  [selectedServer]="selectedServer()"
+  [disabled]="running()"
+  [loading]="serversLoading()"
+  (serverChange)="onServerChange($event)"
+/>
+
+<!-- Client IP display -->
+@if (data().clientIp) {
+  <p class="client-info">
+    <span class="label">You are connected through:</span><br />
+    {{ data().clientIp }}
+  </p>
+} @else if (telemetryEnabled() && !running() && !finished()) {
+  <p class="privacy-notice">
+    by clicking the start button you agree to our privacy policy<br />
+    <a href="#" (click)="showPrivacyDialog.set(true); $event.preventDefault()">
+      or choose your privacy options
+    </a>
+  </p>
+}
+
+<!-- Start/Abort Button -->
+<div class="action-area">
+  <p-button
+    [label]="buttonLabel()"
+    [disabled]="buttonDisabled()"
+    styleClass="speedtest-btn"
+    [class.running]="running()"
+    (onClick)="onStartStop()"
+  />
+</div>
+
+<!-- Gauges -->
+<div class="gauge-layout">
+  <div class="ping-area" [class.visible]="showPingJitter()">
+    <span class="metric-label">Ping</span>:&nbsp;
+    <span class="metric-value">{{ formatPing() }}</span>ms
+  </div>
+
+  <app-gauge
+    type="download"
+    [speed]="data().dlStatus"
+    [progress]="data().dlProgress"
+    [enabled]="gaugesEnabled()"
+    [oscillate]="isDownloading()"
+  />
+
+  <app-gauge
+    type="upload"
+    [speed]="data().ulStatus"
+    [progress]="data().ulProgress"
+    [enabled]="gaugesEnabled()"
+    [oscillate]="isUploading()"
+  />
+
+  <div class="jitter-area" [class.visible]="showPingJitter()">
+    <span class="metric-label">Jitter</span>:&nbsp;
+    <span class="metric-value">{{ formatJitter() }}</span>ms
+  </div>
+</div>
+
+<!-- Share Results -->
+@if (canShare()) {
+  <p-button
+    label="Share results"
+    [outlined]="true"
+    severity="secondary"
+    (onClick)="showShareDialog.set(true)"
+  />
+}
+
+<!-- Privacy Dialog -->
+<p-dialog
+  header="Privacy Policy"
+  [(visible)]="showPrivacyDialog"
+  [modal]="true"
+  [style]="{ width: '70vw', maxHeight: '80vh' }"
+  [dismissableMask]="true"
+>
+  <p>This HTML5 speed test server is configured with telemetry enabled.</p>
+
+  <h3>What data we collect</h3>
+  <p>At the end of the test, the following data is collected and stored:</p>
+  <ul>
+    <li>Test ID</li>
+    <li>Time of testing</li>
+    <li>Test results (download and upload speed, ping and jitter)</li>
+    <li>IP address</li>
+    <li>ISP information</li>
+    <li>Approximate location (inferred from IP address, not GPS)</li>
+    <li>User agent and browser locale</li>
+    <li>Test log (contains no personal information)</li>
+  </ul>
+
+  <h3>How we use the data</h3>
+  <p>Data collected through this service is used to:</p>
+  <ul>
+    <li>Allow sharing of test results</li>
+    <li>To improve the service offered to you</li>
+  </ul>
+  <p>No personal information is disclosed to third parties.</p>
+
+  <h3>Your consent</h3>
+  <p>By starting the test, you consent to the terms of this privacy policy.</p>
+
+  <h3>Data removal</h3>
+  <p>
+    If you want to have your information deleted, you need to provide either the
+    ID of the test or your IP address.
+  </p>
+</p-dialog>
+
+<!-- Share Dialog -->
+<p-dialog
+  header="Share Results"
+  [(visible)]="showShareDialog"
+  [modal]="true"
+  [style]="{ width: '50vw' }"
+  [dismissableMask]="true"
+>
+  @if (shareUrl()) {
+    <div class="share-content">
+      <img [src]="shareUrl()" alt="Test results" class="results-image" />
+      <p-button label="Copy link" (onClick)="copyShareLink()" />
+    </div>
+  }
+</p-dialog>

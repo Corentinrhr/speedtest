@@ -1,0 +1,21 @@
+<div
+  class="gauge"
+  [class.download]="type() === 'download'"
+  [class.upload]="type() === 'upload'"
+  [class.enabled]="enabled()"
+>
+  <div
+    class="progress-arc"
+    [style.--progress-rotation]="progressRotation() + 'deg'"
+  ></div>
+  <div
+    class="speed-arc"
+    [style.--speed-rotation]="speedRotation() + 'deg'"
+  ></div>
+
+  <div class="value-display">
+    <span class="speed-value">{{ displaySpeed() }}</span>
+    <span class="unit">Mbps</span>
+  </div>
+  <h2 class="label">{{ type() === 'download' ? 'Download' : 'Upload' }}</h2>
+</div>

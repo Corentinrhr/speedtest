@@ -1,0 +1,140 @@
+<p-toast />
+
+<h1 class="page-title">Stability Test</h1>
+<nav class="back-link">
+  <a routerLink="/">&larr; Speed Test</a>
+</nav>
+
+<!-- Controls -->
+<div class="controls">
+  <p-select
+    [options]="durationOptions"
+    [(ngModel)]="selectedDuration"
+    optionLabel="label"
+    optionValue="value"
+    styleClass="control-dropdown"
+  />
+
+  <p-select
+    [options]="targetOptions"
+    [(ngModel)]="selectedTarget"
+    optionLabel="label"
+    optionValue="value"
+    styleClass="control-dropdown"
+  />
+
+  <p-button
+    [label]="buttonLabel()"
+    [disabled]="!canStart() && !running()"
+    [styleClass]="running() ? 'speedtest-btn running' : 'speedtest-btn'"
+    (onClick)="onStartStop()"
+  />
+
+  <p-button
+    label="Reset"
+    [outlined]="true"
+    severity="secondary"
+    (onClick)="onReset()"
+  />
+</div>
+
+<!-- Server selector (only for local target) -->
+@if (!selectedTarget() && servers().length > 1) {
+  <div class="server-area">
+    <label>Server:</label>
+    <p-select
+      [options]="servers()"
+      [ngModel]="selectedServer()"
+      (ngModelChange)="onServerChange($event)"
+      optionLabel="name"
+      styleClass="control-dropdown"
+      [disabled]="running()"
+    />
+  </div>
+}
+
+<!-- Rating -->
+<div class="rating" [ngClass]="rating().cssClass">
+  {{ rating().text }}
+</div>
+
+<!-- Metrics -->
+<div class="metrics">
+  <div class="metric-group">
+    <div class="metric">
+      <span class="metric-name">Current</span>
+      <span class="metric-value" [class.highlight]="true">
+        {{ fmt(data()?.currentPing) }}
+      </span>
+      <span class="metric-unit">ms</span>
+    </div>
+    <div class="metric">
+      <span class="metric-name">Average</span>
+      <span class="metric-value" [class.highlight]="true">
+        {{ fmt(data()?.avgPing) }}
+      </span>
+      <span class="metric-unit">ms</span>
+    </div>
+    <div class="metric">
+      <span class="metric-name">Jitter</span>
+      <span class="metric-value" [class.highlight]="true">
+        {{ fmt(data()?.jitter) }}
+      </span>
+      <span class="metric-unit">ms</span>
+    </div>
+  </div>
+
+  <div class="metric-group">
+    <div class="metric">
+      <span class="metric-name">Min</span>
+      <span class="metric-value">
+        {{ data()?.minPing && data()!.minPing > 0 ? fmt(data()!.minPing) : '--' }}
+      </span>
+      <span class="metric-unit">ms</span>
+    </div>
+    <div class="metric">
+      <span class="metric-name">Max</span>
+      <span class="metric-value">{{ fmt(data()?.maxPing) }}</span>
+      <span class="metric-unit">ms</span>
+    </div>
+    <div class="metric">
+      <span class="metric-name">Failed</span>
+      <span class="metric-value">{{ fmtLoss() }}</span>
+      <span class="metric-unit">%</span>
+    </div>
+    <div class="metric">
+      <span class="metric-name">Elapsed</span>
+      <span class="metric-value">
+        {{ fmtTime(data()?.elapsed ?? 0) }}
+      </span>
+      <span class="metric-unit"></span>
+    </div>
+  </div>
+</div>
+
+<!-- Chart -->
+<div class="chart-container">
+  <canvas #pingChart class="ping-chart"></canvas>
+</div>
+
+<!-- Optional controls -->
+<div class="optional-controls">
+  <div class="threshold-control">
+    <label>Alert threshold: {{ thresholdLabel() }}</label>
+    <p-slider
+      [(ngModel)]="alertThreshold"
+      [min]="0"
+      [max]="500"
+      [step]="10"
+      styleClass="threshold-slider"
+    />
+  </div>
+
+  <p-button
+    label="Download CSV"
+    [outlined]="true"
+    severity="secondary"
+    icon="pi pi-download"
+    (onClick)="downloadCsv()"
+  />
+</div>

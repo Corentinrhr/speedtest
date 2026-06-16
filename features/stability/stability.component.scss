@@ -1,0 +1,160 @@
+:host {
+  display: block;
+  padding-bottom: 4rem;
+}
+
+.page-title {
+  font-size: 3.6rem;
+  font-weight: 400;
+  letter-spacing: -0.2rem;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.back-link {
+  margin-bottom: 2rem;
+
+  a {
+    font-size: 1.6rem;
+  }
+}
+
+// Controls
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin: 2rem 0;
+}
+
+.server-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin: 1rem 0;
+
+  label {
+    font-size: 1.6rem;
+    color: var(--text-secondary);
+  }
+}
+
+// Rating
+.rating {
+  font-size: 2.6rem;
+  font-weight: 700;
+  margin: 1rem 0;
+
+  &.great {
+    color: #2ecc71;
+  }
+  &.good {
+    color: #27ae60;
+  }
+  &.poor {
+    color: #e67e22;
+  }
+  &.bad {
+    color: #e74c3c;
+  }
+  &.none {
+    color: #808080;
+  }
+}
+
+// Metrics
+.metrics {
+  margin: 2rem auto;
+  max-width: 70rem;
+}
+
+.metric-group {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 10rem;
+
+  .metric-name {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05rem;
+  }
+
+  .metric-value {
+    font-size: 3.2rem;
+    font-weight: 200;
+    color: var(--text-secondary);
+    letter-spacing: -0.1rem;
+
+    &.highlight {
+      color: #aa6060;
+    }
+  }
+
+  .metric-unit {
+    font-size: 1.4rem;
+    color: var(--text-secondary);
+  }
+}
+
+// Chart
+.chart-container {
+  margin: 2rem auto;
+  width: 95%;
+  max-width: 60rem;
+}
+
+.ping-chart {
+  width: 100%;
+  height: 280px;
+  border: 1px solid #404040;
+  border-radius: 4px;
+  background: #1a1a1a;
+
+  @media screen and (max-width: 800px) {
+    height: 200px;
+  }
+}
+
+// Optional controls
+.optional-controls {
+  margin: 2rem auto;
+  max-width: 40rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.threshold-control {
+  width: 100%;
+  text-align: center;
+
+  label {
+    display: block;
+    font-size: 1.6rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+  }
+}
+
+:host ::ng-deep .threshold-slider {
+  width: 100%;
+}
+
+:host ::ng-deep .control-dropdown {
+  min-width: 16rem;
+}

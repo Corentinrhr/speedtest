@@ -1,0 +1,178 @@
+// === Variables ===
+:root {
+  --theme-green: #5cf9fd;
+  --theme-pink: #d63bc6;
+
+  --bg-primary: #0e0720;
+  --bg-overlay: rgba(41, 26, 70, 0.71);
+  --bg-surface: #251b32;
+
+  --text-primary: #ffffff;
+  --text-secondary: #898591;
+  --text-tagline: var(--theme-green);
+
+  --gauge-bg: #3e2f50;
+  --gauge-progress: #726c7a;
+
+  --border-color: #625b6b;
+}
+
+// === Reset ===
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  min-height: 100vh;
+  width: 100%;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    sans-serif;
+  font-size: 10px;
+  background-color: var(--bg-primary);
+  background-image: url('assets/images/background.jpeg');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  color: var(--text-primary);
+
+  @media screen and (max-width: 800px) {
+    font-size: 8px;
+  }
+}
+
+body {
+  background-color: var(--bg-overlay);
+  display: flex;
+  flex-direction: column;
+}
+
+a {
+  color: var(--theme-green);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 1.6rem;
+  letter-spacing: -0.1rem;
+  text-underline-offset: 0.3rem;
+  transition: text-underline-offset 0.2s, color 0.2s;
+
+  &:hover {
+    color: var(--theme-pink);
+    text-underline-offset: 0.5rem;
+    text-decoration: underline;
+  }
+}
+
+// === PrimeNG Theme Overrides ===
+// Override PrimeNG dialog backdrop
+.p-dialog-mask {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+}
+
+.p-dialog {
+  background: var(--bg-surface) !important;
+  border: none !important;
+  border-radius: 0.8rem !important;
+  color: var(--text-primary) !important;
+
+  .p-dialog-header {
+    background: transparent !important;
+    color: var(--text-primary) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+  }
+
+  .p-dialog-content {
+    background: transparent !important;
+    color: var(--text-secondary) !important;
+  }
+}
+
+// Override PrimeNG button to match theme
+.p-button.speedtest-btn {
+  height: 6.8rem;
+  min-width: 26.4rem;
+  padding: 0 5rem;
+  border-radius: 3.4rem;
+  border: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.1rem;
+  text-transform: uppercase;
+  cursor: pointer;
+  background: linear-gradient(
+    93deg,
+    #f5f5f5 0%,
+    #f5f5f5 33%,
+    var(--theme-green) 40%,
+    var(--theme-pink) 67%,
+    var(--theme-pink) 100%
+  );
+  background-size: 300% 100%;
+  background-position: 0% 0%;
+  color: #3e2f50;
+  box-shadow: 0 0.4rem 1.6rem 0 rgba(92, 249, 253, 0.28);
+  transition: background-position 0.2s, transform 0.2s;
+
+  &:hover:not(:disabled) {
+    background-position: 60% 0%;
+    transform: scale(1.03);
+  }
+
+  &:active:not(:disabled) {
+    background-position: 100% 0%;
+  }
+
+  &:disabled {
+    background: #a2a2a2;
+    cursor: default;
+    transform: none;
+  }
+
+  &.running {
+    background-position: 100% 0%;
+  }
+}
+
+// Override PrimeNG Dropdown
+.p-dropdown.server-dropdown {
+  width: 100%;
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 0.8rem !important;
+  color: var(--text-primary) !important;
+
+  .p-dropdown-label {
+    color: var(--text-primary) !important;
+    font-size: 1.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: -0.1rem;
+  }
+
+  &:hover {
+    border-color: var(--theme-green) !important;
+  }
+}
+
+.p-dropdown-panel {
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border-color) !important;
+
+  .p-dropdown-item {
+    color: var(--text-primary) !important;
+    font-size: 1.6rem;
+
+    &:hover {
+      background: var(--border-color) !important;
+    }
+  }
+}
+
+// PrimeNG Knob overrides
+.p-knob svg text {
+  fill: var(--text-primary) !important;
+}

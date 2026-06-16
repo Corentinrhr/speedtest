@@ -1,0 +1,38 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+header {
+  padding: 4rem 7rem;
+
+  @media screen and (max-width: 800px) {
+    padding: 4rem 2rem;
+    text-align: center;
+  }
+
+  .logo {
+    height: 3.2rem;
+  }
+}
+
+main {
+  flex: 1;
+  text-align: center;
+  padding: 0 2rem;
+}
+
+footer {
+  margin: auto auto 0 auto;
+  padding: 5rem;
+  text-align: center;
+
+  .links a {
+    font-size: 1.6rem;
+  }
+
+  @media screen and (max-width: 800px) {
+    padding: 4rem;
+  }
+}

@@ -9,3 +9,4 @@ test-results/
 results/speedtest_telemetry.db
 results/speedtest_telemetry.db-shm
 results/speedtest_telemetry.db-wal
+.angular/cache/20.3.28/librespeed-frontend/.tsbuildinfo

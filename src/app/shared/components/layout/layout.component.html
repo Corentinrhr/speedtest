@@ -1,18 +1,45 @@
-<header>
-  <a routerLink="/">
-    <img src="assets/images/icon.png" alt="LibreSpeed" class="logo" />
-  </a>
-</header>
+<div class="dashboard-layout" [class.sidebar-collapsed]="sidebarCollapsed()">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <img
+        src="assets/images/icon.png"
+        alt="LibreSpeed"
+        class="sidebar-logo"
+        [class.hidden]="sidebarCollapsed()"
+      />
+      <p-button
+        [icon]="sidebarCollapsed() ? 'pi pi-angle-right' : 'pi pi-angle-left'"
+        [rounded]="true"
+        [text]="true"
+        severity="secondary"
+        (onClick)="toggleSidebar()"
+        styleClass="toggle-btn"
+      />
+    </div>
 
-<main>
-  <router-outlet />
-</main>
+    <nav class="sidebar-nav">
+      @for (item of menuItems; track item.route) {
+        <a
+          class="nav-item"
+          [routerLink]="item.route"
+          routerLinkActive="active"
+        >
+          <i [class]="item.icon"></i>
+          <span class="nav-label" [class.hidden]="sidebarCollapsed()">
+            {{ item.label }}
+          </span>
+        </a>
+      }
+    </nav>
 
-<footer>
-  <p class="links">
-    <a routerLink="/stability">stability test</a> |
-    <a href="https://github.com/librespeed/speedtest" target="_blank" rel="noopener">
-      source code
-    </a>
-  </p>
-</footer>
+    <div class="sidebar-footer" [class.hidden]="sidebarCollapsed()">
+      <span class="version-tag">LibreSpeed Angular</span>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main-content">
+    <router-outlet />
+  </main>
+</div>

@@ -1,0 +1,56 @@
+:host {
+  display: block;
+}
+
+.credits-page {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.page-header {
+  margin-bottom: 2rem;
+
+  h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-color);
+    margin: 0 0 0.25rem;
+  }
+
+  .subtitle {
+    font-size: 1rem;
+    color: var(--text-color-secondary);
+    margin: 0;
+  }
+}
+
+h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-color);
+  margin: 0 0 0.5rem;
+}
+
+h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-color);
+  margin: 1.5rem 0 0.5rem;
+}
+
+p {
+  font-size: 0.95rem;
+  color: var(--text-color-secondary);
+  line-height: 1.6;
+  margin: 0 0 0.5rem;
+}
+
+a {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-weight: 500;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}

@@ -1,140 +1,109 @@
-<p-toast />
+<div class="stability-page">
+  <div class="page-header">
+    <h1>Stability Test</h1>
+    <p class="subtitle">Monitor your connection stability over time</p>
+  </div>
 
-<h1 class="page-title">Stability Test</h1>
-<nav class="back-link">
-  <a routerLink="/">&larr; Speed Test</a>
-</nav>
-
-<!-- Controls -->
-<div class="controls">
-  <p-select
-    [options]="durationOptions"
-    [(ngModel)]="selectedDuration"
-    optionLabel="label"
-    optionValue="value"
-    styleClass="control-dropdown"
-  />
-
-  <p-select
-    [options]="targetOptions"
-    [(ngModel)]="selectedTarget"
-    optionLabel="label"
-    optionValue="value"
-    styleClass="control-dropdown"
-  />
-
-  <p-button
-    [label]="buttonLabel()"
-    [disabled]="!canStart() && !running()"
-    [styleClass]="running() ? 'speedtest-btn running' : 'speedtest-btn'"
-    (onClick)="onStartStop()"
-  />
-
-  <p-button
-    label="Reset"
-    [outlined]="true"
-    severity="secondary"
-    (onClick)="onReset()"
-  />
-</div>
-
-<!-- Server selector (only for local target) -->
-@if (!selectedTarget() && servers().length > 1) {
-  <div class="server-area">
-    <label>Server:</label>
+  <!-- Controls -->
+  <div class="controls-row">
     <p-select
-      [options]="servers()"
-      [ngModel]="selectedServer()"
-      (ngModelChange)="onServerChange($event)"
-      optionLabel="name"
-      styleClass="control-dropdown"
-      [disabled]="running()"
+      [options]="durationOptions"
+      [(ngModel)]="selectedDuration"
+      optionLabel="label"
+      optionValue="value"
+      placeholder="Duration"
     />
-  </div>
-}
 
-<!-- Rating -->
-<div class="rating" [ngClass]="rating().cssClass">
-  {{ rating().text }}
-</div>
+    <p-select
+      [options]="targetOptions"
+      [(ngModel)]="selectedTarget"
+      optionLabel="label"
+      optionValue="value"
+      placeholder="Target"
+    />
 
-<!-- Metrics -->
-<div class="metrics">
-  <div class="metric-group">
-    <div class="metric">
-      <span class="metric-name">Current</span>
-      <span class="metric-value" [class.highlight]="true">
-        {{ fmt(data()?.currentPing) }}
-      </span>
-      <span class="metric-unit">ms</span>
-    </div>
-    <div class="metric">
-      <span class="metric-name">Average</span>
-      <span class="metric-value" [class.highlight]="true">
-        {{ fmt(data()?.avgPing) }}
-      </span>
-      <span class="metric-unit">ms</span>
-    </div>
-    <div class="metric">
-      <span class="metric-name">Jitter</span>
-      <span class="metric-value" [class.highlight]="true">
-        {{ fmt(data()?.jitter) }}
-      </span>
-      <span class="metric-unit">ms</span>
-    </div>
-  </div>
+    <p-button
+      [label]="buttonLabel()"
+      [icon]="running() ? 'pi pi-stop' : 'pi pi-play'"
+      [severity]="running() ? 'danger' : 'primary'"
+      [disabled]="!canStart() && !running()"
+      (onClick)="onStartStop()"
+    />
 
-  <div class="metric-group">
-    <div class="metric">
-      <span class="metric-name">Min</span>
-      <span class="metric-value">
-        {{ data()?.minPing && data()!.minPing > 0 ? fmt(data()!.minPing) : '--' }}
-      </span>
-      <span class="metric-unit">ms</span>
-    </div>
-    <div class="metric">
-      <span class="metric-name">Max</span>
-      <span class="metric-value">{{ fmt(data()?.maxPing) }}</span>
-      <span class="metric-unit">ms</span>
-    </div>
-    <div class="metric">
-      <span class="metric-name">Failed</span>
-      <span class="metric-value">{{ fmtLoss() }}</span>
-      <span class="metric-unit">%</span>
-    </div>
-    <div class="metric">
-      <span class="metric-name">Elapsed</span>
-      <span class="metric-value">
-        {{ fmtTime(data()?.elapsed ?? 0) }}
-      </span>
-      <span class="metric-unit"></span>
-    </div>
-  </div>
-</div>
-
-<!-- Chart -->
-<div class="chart-container">
-  <canvas #pingChart class="ping-chart"></canvas>
-</div>
-
-<!-- Optional controls -->
-<div class="optional-controls">
-  <div class="threshold-control">
-    <label>Alert threshold: {{ thresholdLabel() }}</label>
-    <p-slider
-      [(ngModel)]="alertThreshold"
-      [min]="0"
-      [max]="500"
-      [step]="10"
-      styleClass="threshold-slider"
+    <p-button
+      label="Reset"
+      icon="pi pi-refresh"
+      [outlined]="true"
+      severity="secondary"
+      (onClick)="onReset()"
     />
   </div>
 
-  <p-button
-    label="Download CSV"
-    [outlined]="true"
-    severity="secondary"
-    icon="pi pi-download"
-    (onClick)="downloadCsv()"
-  />
+  <!-- Rating -->
+  @if (showResults()) {
+    <div class="rating-badge" [ngClass]="rating().cssClass">
+      {{ rating().text }}
+    </div>
+  }
+
+  <!-- Metrics -->
+  @if (showResults()) {
+    <div class="metrics-grid">
+      <p-card styleClass="metric-card">
+        <div class="metric-content">
+          <span class="metric-label">Current</span>
+          <span class="metric-value highlight">{{ fmt(data()?.currentPing) }}</span>
+          <span class="metric-unit">ms</span>
+        </div>
+      </p-card>
+
+      <p-card styleClass="metric-card">
+        <div class="metric-content">
+          <span class="metric-label">Average</span>
+          <span class="metric-value highlight">{{ fmt(data()?.avgPing) }}</span>
+          <span class="metric-unit">ms</span>
+        </div>
+      </p-card>
+
+      <p-card styleClass="metric-card">
+        <div class="metric-content">
+          <span class="metric-label">Min</span>
+          <span class="metric-value">{{ data()?.minPing && data()!.minPing > 0 ? fmt(data()!.minPing) : '--' }}</span>
+          <span class="metric-unit">ms</span>
+        </div>
+      </p-card>
+
+      <p-card styleClass="metric-card">
+        <div class="metric-content">
+          <span class="metric-label">Max</span>
+          <span class="metric-value">{{ fmt(data()?.maxPing) }}</span>
+          <span class="metric-unit">ms</span>
+        </div>
+      </p-card>
+
+      <p-card styleClass="metric-card">
+        <div class="metric-content">
+          <span class="metric-label">Jitter</span>
+          <span class="metric-value highlight">{{ fmt(data()?.jitter) }}</span>
+          <span class="metric-unit">ms</span>
+        </div>
+      </p-card>
+
+      <p-card styleClass="metric-card">
+        <div class="metric-content">
+          <span class="metric-label">Packet Loss</span>
+          <span class="metric-value">{{ fmtLoss() }}</span>
+          <span class="metric-unit">%</span>
+        </div>
+      </p-card>
+
+      <p-card styleClass="metric-card">
+        <div class="metric-content">
+          <span class="metric-label">Elapsed</span>
+          <span class="metric-value">{{ fmtTime(data()?.elapsed ?? 0) }}</span>
+          <span class="metric-unit"></span>
+        </div>
+      </p-card>
+    </div>
+  }
 </div>

@@ -5,28 +5,20 @@ import {
   inject,
   signal,
   computed,
-  effect,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Button } from 'primeng/button';
-import { Dialog } from 'primeng/dialog';
+import { ButtonModule } from 'primeng/button';
+import { CardModule } from 'primeng/card';
 import { SpeedtestService } from '@core/services/speedtest.service';
 import { ServerService } from '@core/services/server.service';
 import { SpeedtestSettings, TestState } from '@core/models/speedtest.model';
 import { SpeedtestServer } from '@core/models/server.model';
-import { GaugeComponent } from '@shared/components/gauge/gauge.component';
 import { ServerSelectorComponent } from '@shared/components/server-selector/server-selector.component';
 
 @Component({
   selector: 'app-speedtest',
   standalone: true,
-  imports: [
-    CommonModule,
-    Button,
-    Dialog,
-    GaugeComponent,
-    ServerSelectorComponent,
-  ],
+  imports: [CommonModule, ButtonModule, CardModule, ServerSelectorComponent],
   templateUrl: './speedtest.component.html',
   styleUrl: './speedtest.component.scss',
 })
@@ -43,64 +35,58 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
   readonly selectedServer = this.serverService.selectedServer;
   readonly serversLoading = this.serverService.loading;
 
-  readonly showPrivacyDialog = signal(false);
-  readonly showShareDialog = signal(false);
-  readonly telemetryEnabled = signal(false);
-
   readonly buttonLabel = computed(() => {
     if (this.serversLoading()) return 'Loading...';
     if (this.running()) return 'Abort';
     if (this.finished()) return 'Restart';
-    return "Let's start";
+    return 'Start Test';
+  });
+
+  readonly buttonIcon = computed(() => {
+    if (this.running()) return 'pi pi-stop';
+    return 'pi pi-play';
+  });
+
+  readonly buttonSeverity = computed(() => {
+    if (this.running()) return 'danger' as const;
+    return 'primary' as const;
   });
 
   readonly buttonDisabled = computed(
     () => this.serversLoading() && !this.running()
   );
 
-  readonly isDownloading = computed(
-    () => this.data().testState === TestState.DOWNLOAD
-  );
-  readonly isUploading = computed(
-    () => this.data().testState === TestState.UPLOAD
-  );
-  readonly gaugesEnabled = computed(
+  readonly showResults = computed(
     () => this.running() || this.finished()
   );
-  readonly showPingJitter = computed(
-    () => !!this.data().pingStatus && !!this.data().jitterStatus
-  );
-  readonly canShare = computed(
-    () =>
-      this.finished() && this.telemetryEnabled() && !!this.data().testId
-  );
 
-  readonly shareUrl = computed(() => {
-    const testId = this.data().testId;
-    if (!testId) return '';
-    const base = window.location.href.substring(
-      0,
-      window.location.href.lastIndexOf('/')
-    );
-    return `${base}/results/?id=${testId}`;
+  readonly downloadSpeed = computed(() => this.formatSpeed(this.data().dlStatus));
+  readonly uploadSpeed = computed(() => this.formatSpeed(this.data().ulStatus));
+  readonly ping = computed(() => this.formatMetric(this.data().pingStatus));
+  readonly jitter = computed(() => this.formatMetric(this.data().jitterStatus));
+
+  readonly currentPhase = computed(() => {
+    const state = this.data().testState;
+    switch (state) {
+      case TestState.STARTING:
+        return 'Initializing...';
+      case TestState.DOWNLOAD:
+        return 'Testing Download...';
+      case TestState.PING_JITTER:
+        return 'Testing Ping...';
+      case TestState.UPLOAD:
+        return 'Testing Upload...';
+      case TestState.FINISHED:
+        return 'Test Complete';
+      case TestState.ABORTED:
+        return 'Test Aborted';
+      default:
+        return '';
+    }
   });
-
-  readonly formatPing = computed(() => this.formatNumber(this.data().pingStatus));
-  readonly formatJitter = computed(() =>
-    this.formatNumber(this.data().jitterStatus)
-  );
 
   async ngOnInit(): Promise<void> {
     this.settings = await this.speedtest.loadSettings();
-
-    if (
-      this.settings['telemetry_level'] &&
-      this.settings['telemetry_level'] !== 'off' &&
-      this.settings['telemetry_level'] !== 'disabled'
-    ) {
-      this.telemetryEnabled.set(true);
-    }
-
     await this.serverService.loadServers();
     await this.serverService.selectBestServer();
   }
@@ -121,19 +107,19 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
     this.serverService.selectServer(server);
   }
 
-  async copyShareLink(): Promise<void> {
-    const url = this.shareUrl();
-    if (url && navigator.clipboard) {
-      await navigator.clipboard.writeText(url);
-    }
-  }
-
-  private formatNumber(value: string): string {
-    if (!value) return '00';
+  private formatSpeed(value: string): string {
+    if (!value) return '--';
     const n = Number(value);
     if (isNaN(n)) return value;
     if (n < 10) return n.toFixed(2);
     if (n < 100) return n.toFixed(1);
     return n.toFixed(0);
+  }
+
+  private formatMetric(value: string): string {
+    if (!value) return '--';
+    const n = Number(value);
+    if (isNaN(n)) return value;
+    return n.toFixed(1);
   }
 }

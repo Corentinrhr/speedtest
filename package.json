@@ -5,7 +5,9 @@
   "scripts": {
     "ng": "ng",
     "prestart": "node ./setup-env.js",
-    "start": "ng serve --configuration development --project librespeed-frontend",
+    "start": "concurrently \"node server.dev.js\" \"ng serve --configuration development --project librespeed-frontend\"",
+    "start:backend": "node server.dev.js",
+    "start:frontend": "ng serve --configuration development --project librespeed-frontend",
     "prebuild": "node ./setup-env.js",
     "build": "ng build",
     "build:prod": "ng build --configuration production",
@@ -35,6 +37,7 @@
     "@angular/build": "^20.0.0",
     "@angular/cli": "^20.0.0",
     "@angular/compiler-cli": "^20.0.0",
+    "concurrently": "^9.0.0",
     "typescript": "~5.8.0"
   },
   "overrides": {

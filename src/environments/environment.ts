@@ -1,7 +1,7 @@
 export const environment = {
   production: false,
-  serverListUrl: 'server-list.json',
-  settingsUrl: 'settings.json',
-  workerPath: 'speedtest_worker.js',
-  stabilityWorkerPath: 'stability_worker.js',
+  serverListUrl: 'assets/workers/server-list.json',
+  settingsUrl: 'assets/workers/settings.json',
+  workerPath: 'assets/workers/speedtest_worker.js',
+  stabilityWorkerPath: 'assets/workers/stability_worker.js',
 };

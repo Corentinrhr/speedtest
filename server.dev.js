@@ -3,7 +3,8 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 
-const PORT = process.env.PORT || 3000;
+// Le backend doit écouter sur le port vers lequel le proxy Angular redirige
+const PORT = process.env.BACKEND_PORT || 8080;
 
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -19,30 +20,11 @@ const MIME_TYPES = {
   ".ttf": "font/ttf"
 };
 
-const PATH_ALIASES = {
-  "/styling/": "/frontend/styling/",
-  "/javascript/": "/frontend/javascript/",
-  "/fonts/": "/frontend/fonts/",
-  "/images/": "/frontend/images/",
-  "/server-list.json": "/frontend/server-list.json",
-  "/settings.json": "/frontend/settings.json"
-};
-
-function resolveFilePath(urlPath) {
-  for (var alias in PATH_ALIASES) {
-    if (urlPath === alias.slice(0, -1) || urlPath.indexOf(alias) === 0) {
-      return path.join(__dirname, urlPath.replace(alias, PATH_ALIASES[alias]));
-    }
-  }
-  return path.join(__dirname, urlPath);
-}
-
 function setCorsHeaders(res, url) {
-  if (url.indexOf("cors=true") !== -1) {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Encoding, Content-Type");
-  }
+  // Toujours envoyer les CORS headers en dev pour éviter les problèmes
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Encoding, Content-Type");
 }
 
 function setNoCacheHeaders(res) {
@@ -132,6 +114,14 @@ http
     var ts = new Date().toLocaleTimeString();
     console.log("[" + ts + "] " + req.method + " " + pathname);
 
+    // Handle CORS preflight
+    if (req.method === "OPTIONS") {
+      setCorsHeaders(res, req.url);
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
     if (pathname === "/backend/empty.php") {
       if (req.method === "POST") {
         req.on("data", function () {});
@@ -152,17 +142,18 @@ http
       return;
     }
 
-    var filePath = pathname === "/" ? path.join(__dirname, "index.html") : resolveFilePath(pathname);
+    var filePath = pathname === "/" ? path.join(__dirname, "index.html") : path.join(__dirname, pathname);
     serveStaticFile(req, res, filePath);
   })
   .listen(PORT, function () {
     console.log("");
-    console.log("  ⚡ LibreSpeed Dev Server");
-    console.log("  ========================");
-    console.log("  Local:   http://localhost:" + PORT);
-    console.log("  Modern:  http://localhost:" + PORT + "/?design=new");
-    console.log("  Classic: http://localhost:" + PORT + "/?design=old");
-    console.log("");
-    console.log("  Edit files and refresh browser to see changes.");
+    console.log("  ⚡ LibreSpeed Backend Dev Server");
+    console.log("  =================================");
+    console.log("  Listening on: http://localhost:" + PORT);
+    console.log("  Endpoints:");
+    console.log("    GET  /backend/empty.php    -> ping/empty response");
+    console.log("    POST /backend/empty.php    -> upload target");
+    console.log("    GET  /backend/garbage.php  -> download data");
+    console.log("    GET  /backend/getIP.php    -> client IP");
     console.log("");
   });

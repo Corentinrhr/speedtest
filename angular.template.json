@@ -12,32 +12,21 @@
         "build": {
           "builder": "@angular/build:application",
           "options": {
-            "outputPath": "dist",
-            "index": "src/index.html",
             "browser": "src/main.ts",
             "polyfills": ["zone.js"],
             "tsConfig": "tsconfig.app.json",
             "assets": [
               {
                 "glob": "**/*",
+                "input": "public"
+              },
+              {
+                "glob": "**/*",
                 "input": "src/assets",
                 "output": "assets"
-              },
-              {
-                "glob": "speedtest_worker.js",
-                "input": "..",
-                "output": "."
-              },
-              {
-                "glob": "stability_worker.js",
-                "input": "..",
-                "output": "."
               }
             ],
-            "styles": [
-              "src/styles.scss",
-              "node_modules/primeicons/primeicons.css"
-            ],
+            "styles": ["src/styles.scss"],
             "scripts": []
           },
           "configurations": {
@@ -47,6 +36,11 @@
                   "type": "initial",
                   "maximumWarning": "500kB",
                   "maximumError": "1MB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "4kB",
+                  "maximumError": "8kB"
                 }
               ],
               "outputHashing": "all"
@@ -61,6 +55,12 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": {
+            "buildTarget": "librespeed-frontend:build:development",
+            "host": "0.0.0.0",
+            "port": 3000,
+            "proxyConfig": "proxy.conf.json"
+          },
           "configurations": {
             "production": {
               "buildTarget": "librespeed-frontend:build:production"

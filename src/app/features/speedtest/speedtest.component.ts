@@ -14,8 +14,8 @@ import { SpeedtestService } from '@core/services/speedtest.service';
 import { ServerService } from '@core/services/server.service';
 import { SpeedtestSettings, TestState } from '@core/models/speedtest.model';
 import { SpeedtestServer } from '@core/models/server.model';
-import { GaugeComponent } from './components/gauge/gauge.component';
-import { ServerSelectorComponent } from './components/server-selector/server-selector.component';
+import { GaugeComponent } from '@shared/components/gauge/gauge.component';
+import { ServerSelectorComponent } from '@shared/components/server-selector/server-selector.component';
 
 @Component({
   selector: 'app-speedtest',
@@ -35,7 +35,6 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
   private readonly serverService = inject(ServerService);
 
   private settings: SpeedtestSettings = {};
-  private animFrameId = 0;
 
   readonly data = this.speedtest.data;
   readonly running = this.speedtest.running;

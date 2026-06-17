@@ -2,7 +2,6 @@ results/idObfuscation_salt.php
 backend/getIP_serverLocation.php
 db-dir/
 .vscode/
-node_modules/
 package-lock.json
 playwright-report/
 test-results/
@@ -10,3 +9,9 @@ results/speedtest_telemetry.db
 results/speedtest_telemetry.db-shm
 results/speedtest_telemetry.db-wal
 .angular/cache/20.3.28/librespeed-frontend/.tsbuildinfo
+/node_modules
+/dist
+/.angular
+.env
+angular.json
+proxy.conf.json

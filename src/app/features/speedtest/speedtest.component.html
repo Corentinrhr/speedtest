@@ -1,98 +1,132 @@
 <div class="speedtest-page">
-  <div class="page-header">
-    <h1>Speed Test</h1>
-    <p class="subtitle">Measure your connection speed</p>
+  <!-- Breadcrumb -->
+  <div class="page-breadcrumb">
+    <i class="pi pi-caret-left"></i>
+    <span class="crumb muted">LibreSpeed</span>
+    <i class="pi pi-caret-right"></i>
+    <span class="crumb active">Speedtest</span>
+    <i class="pi pi-caret-left"></i>
   </div>
 
-  <!-- Server selector -->
-  <app-server-selector
-    [servers]="servers()"
-    [selectedServer]="selectedServer()"
-    [disabled]="running()"
-    [loading]="serversLoading()"
-    (serverChange)="onServerChange($event)"
-  />
+  <!-- Barre d'action -->
+  <p-card styleClass="action-bar-card">
+    <div class="action-bar">
+      <p-button
+        [label]="buttonLabel()"
+        [icon]="buttonIcon()"
+        [disabled]="buttonDisabled()"
+        [severity]="running() ? 'danger' : 'primary'"
+        styleClass="start-btn"
+        (onClick)="onStartStop()"
+      />
+      <p-button
+        label="Settings"
+        icon="pi pi-cog"
+        [text]="true"
+        severity="secondary"
+        styleClass="settings-btn"
+        (onClick)="toggleServerSelector()"
+      />
+    </div>
+  </p-card>
 
-  <!-- Client IP -->
-  @if (data().clientIp) {
-    <p class="client-ip">
-      <i class="pi pi-globe"></i>
-      {{ data().clientIp }}
-    </p>
-  }
-
-  <!-- Start button -->
-  <div class="action-area">
-    <p-button
-      [label]="buttonLabel()"
-      [icon]="buttonIcon()"
-      [disabled]="buttonDisabled()"
-      [severity]="buttonSeverity()"
-      size="large"
-      [rounded]="true"
-      (onClick)="onStartStop()"
+  <!-- Selecteur serveur -->
+  @if (showServerSelector()) {
+    <app-server-selector
+      [servers]="servers()"
+      [selectedServer]="selectedServer()"
+      [disabled]="running()"
+      [loading]="serversLoading()"
+      (serverChange)="onServerChange($event)"
     />
-  </div>
-
-  <!-- Phase indicator -->
-  @if (currentPhase()) {
-    <p class="phase-label">{{ currentPhase() }}</p>
   }
 
-  <!-- Results cards -->
-  @if (showResults()) {
-    <div class="results-grid">
-      <p-card styleClass="result-card">
-        <div class="result-content">
-          <div class="result-icon download">
-            <i class="pi pi-arrow-down"></i>
-          </div>
-          <div class="result-data">
-            <span class="result-label">Download</span>
-            <span class="result-value">{{ downloadSpeed() }}</span>
-            <span class="result-unit">Mbps</span>
-          </div>
+  <!-- Contenu principal -->
+  <p-card styleClass="main-card">
+    <div class="main-grid">
+      <!-- Colonne gauche : gauge SVG -->
+      <div class="gauge-panel">
+        <div class="gauge-header">
+          <span class="gauge-title"></span>
+          <i class="pi pi-info-circle info-icon"></i>
         </div>
-      </p-card>
 
-      <p-card styleClass="result-card">
-        <div class="result-content">
-          <div class="result-icon upload">
-            <i class="pi pi-arrow-up"></i>
-          </div>
-          <div class="result-data">
-            <span class="result-label">Upload</span>
-            <span class="result-value">{{ uploadSpeed() }}</span>
-            <span class="result-unit">Mbps</span>
-          </div>
-        </div>
-      </p-card>
+        <div class="gauge-percent">%</div>
+        <div class="gauge-percent-label">Completed</div>
 
-      <p-card styleClass="result-card">
-        <div class="result-content">
-          <div class="result-icon ping">
-            <i class="pi pi-clock"></i>
-          </div>
-          <div class="result-data">
-            <span class="result-label">Ping</span>
-            <span class="result-value">{{ ping() }}</span>
-            <span class="result-unit">ms</span>
-          </div>
-        </div>
-      </p-card>
+        <div class="gauge-svg-wrap">
+          <svg viewBox="0 0 220 200" class="gauge-svg">
+            <defs>
+              <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#4f46e5" />
+                <stop offset="100%" stop-color="#7c3aed" />
+              </linearGradient>
+            </defs>
 
-      <p-card styleClass="result-card">
-        <div class="result-content">
-          <div class="result-icon jitter">
-            <i class="pi pi-wave-pulse"></i>
-          </div>
-          <div class="result-data">
-            <span class="result-label">Jitter</span>
-            <span class="result-value">{{ jitter() }}</span>
-            <span class="result-unit">ms</span>
-          </div>
+            <path [attr.d]="gaugeBgPath()" class="gauge-arc-bg" />
+            <path [attr.d]="gaugeValuePath()" class="gauge-arc-value" />
+
+            @for (tick of gaugeTickMarks(); track tick.val) {
+              <line
+                [attr.x1]="tick.x1" [attr.y1]="tick.y1"
+                [attr.x2]="tick.x2" [attr.y2]="tick.y2"
+                class="gauge-tick"
+              />
+              <text
+                [attr.x]="tick.lx" [attr.y]="tick.ly"
+                class="gauge-tick-label"
+                text-anchor="middle" dominant-baseline="middle"
+              ></text>
+            }
+
+            <text x="110" y="118" class="gauge-center-val" text-anchor="middle">
+              
+            </text>
+            <text x="110" y="136" class="gauge-center-unit" text-anchor="middle">
+              Mb/s
+            </text>
+          </svg>
         </div>
-      </p-card>
+
+        @if (showResults()) {
+          <div class="gauge-stats">
+            <div><span>Average :</span>  Mb/s</div>
+            <div><span>Median :</span>  Mb/s</div>
+            <div><span>Max :</span>  Mb/s</div>
+          </div>
+        }
+      </div>
+
+      <!-- Colonne droite : graphe temps reel -->
+      <div class="chart-panel">
+        <p-chart type="line" [data]="chartData()" [options]="chartOptions" height="380px" />
+      </div>
+    </div>
+  </p-card>
+
+  <!-- Resultats finaux -->
+  @if (finished()) {
+    <div class="final-results">
+      <div class="fr-item">
+        <i class="pi pi-arrow-down dl"></i>
+        <span class="fr-label">Download</span>
+        <span class="fr-val"> <small>Mbps</small></span>
+      </div>
+      <div class="fr-item">
+        <i class="pi pi-arrow-up ul"></i>
+        <span class="fr-label">Upload</span>
+        <span class="fr-val"> <small>Mbps</small></span>
+      </div>
+      <div class="fr-item">
+        <i class="pi pi-clock pg"></i>
+        <span class="fr-label">Ping</span>
+        <span class="fr-val"> <small>ms</small></span>
+      </div>
+      <div class="fr-item">
+        <i class="pi pi-wave-pulse jt"></i>
+        <span class="fr-label">Jitter</span>
+        <span class="fr-val"> <small>ms</small></span>
+      </div>
     </div>
   }
 </div>

@@ -344,7 +344,7 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
       const inner = this.polar(this.r - 8, angle);
       const label = this.polar(this.r + 20, angle);
       return {
-        val: val >= 1000 ? '1G' : String(val),
+        val: val >= 1000 ? '1000' : String(val),
         x1: inner.x, y1: inner.y, x2: outer.x, y2: outer.y,
         lx: label.x, ly: label.y,
       };

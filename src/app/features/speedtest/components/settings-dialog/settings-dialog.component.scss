@@ -1,0 +1,96 @@
+:host { display: block; }
+
+:host ::ng-deep .settings-dialog-panel {
+  border-radius: 14px;
+  overflow: hidden;
+
+  .p-dialog-header {
+    padding: 1.5rem 1.75rem 1rem;
+    font-size: 1.15rem;
+    font-weight: 700;
+  }
+  .p-dialog-content {
+    padding: 0.5rem 1.75rem 1rem;
+  }
+  .p-dialog-footer {
+    padding: 1rem 1.75rem 1.5rem;
+  }
+}
+
+.settings-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.settings-section-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-color-secondary);
+  font-weight: 700;
+}
+
+.settings-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: 12px;
+  border: 1px solid var(--surface-border);
+  background: var(--surface-card);
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &:hover { border-color: var(--primary-color); }
+}
+
+.settings-check {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+
+  label { font-weight: 600; color: var(--text-color); cursor: pointer; }
+}
+
+.settings-slider {
+  transition: opacity 0.2s;
+  &.disabled { opacity: 0.45; pointer-events: none; }
+}
+.slider-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--text-color-secondary);
+  font-weight: 600;
+  margin-bottom: 0.85rem;
+}
+
+:host ::ng-deep .settings-slider .p-inputnumber {
+  width: 108px;
+}
+:host ::ng-deep .settings-slider .p-inputnumber-input {
+  width: 108px;
+  text-align: center;
+  font-weight: 600;
+  padding: 0.3rem 0.4rem;
+}
+:host ::ng-deep .settings-slider .p-inputnumber-button {
+  width: 2rem;
+}
+
+:host ::ng-deep .settings-slider .p-slider {
+  margin: 0.15rem 0.2rem 0.35rem;
+}
+:host ::ng-deep .settings-slider .p-slider .p-slider-range {
+  background: linear-gradient(90deg, #4f46e5, #7c3aed);
+}
+:host ::ng-deep .settings-slider .p-slider .p-slider-handle {
+  border-color: #7c3aed;
+}
+
+.settings-warning {
+  color: #e74c3c;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-align: center;
+}

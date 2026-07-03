@@ -1,0 +1,42 @@
+<div class="gauge-percent">{{ progress() }}%</div>
+<div class="gauge-percent-label">Completed</div>
+
+<div class="gauge-svg-wrap">
+  <svg viewBox="0 0 220 200" class="gauge-svg">
+    <defs>
+      @switch (variant()) {
+        @case ('dl') {
+          <linearGradient id="grad-dl" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#4f46e5" />
+            <stop offset="100%" stop-color="#7c3aed" />
+          </linearGradient>
+        }
+        @case ('ul') {
+          <linearGradient id="grad-ul" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#f5576c" />
+            <stop offset="100%" stop-color="#f093fb" />
+          </linearGradient>
+        }
+        @case ('ping') {
+          <linearGradient id="grad-ping" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#4facfe" />
+            <stop offset="100%" stop-color="#00f2fe" />
+          </linearGradient>
+        }
+      }
+    </defs>
+
+    <path [attr.d]="bgPath()" class="gauge-arc-bg" />
+    <path [attr.d]="valPath()" class="gauge-arc-value" [ngClass]="arcClass()" />
+
+    @for (tick of tickMarks(); track tick.val) {
+      <line [attr.x1]="tick.x1" [attr.y1]="tick.y1"
+            [attr.x2]="tick.x2" [attr.y2]="tick.y2" class="gauge-tick" />
+      <text [attr.x]="tick.lx" [attr.y]="tick.ly" class="gauge-tick-label"
+            text-anchor="middle" dominant-baseline="middle">{{ tick.val }}</text>
+    }
+
+    <text x="110" y="118" class="gauge-center-val" text-anchor="middle">{{ fmtNum(value()) }}</text>
+    <text x="110" y="136" class="gauge-center-unit" text-anchor="middle">{{ unit() }}</text>
+  </svg>
+</div>

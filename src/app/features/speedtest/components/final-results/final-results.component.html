@@ -1,0 +1,22 @@
+<div class="final-results">
+  <div class="fr-item">
+    <i class="pi pi-arrow-down dl"></i>
+    <span class="fr-label">Download</span>
+    <span class="fr-val">{{ download() }} <small>Mbps</small></span>
+  </div>
+  <div class="fr-item">
+    <i class="pi pi-arrow-up ul"></i>
+    <span class="fr-label">Upload</span>
+    <span class="fr-val">{{ upload() }} <small>Mbps</small></span>
+  </div>
+  <div class="fr-item">
+    <i class="pi pi-clock pg"></i>
+    <span class="fr-label">Ping</span>
+    <span class="fr-val">{{ ping() }} <small>ms</small></span>
+  </div>
+  <div class="fr-item">
+    <i class="pi pi-wave-pulse jt"></i>
+    <span class="fr-label">Jitter</span>
+    <span class="fr-val">{{ jitter() }} <small>ms</small></span>
+  </div>
+</div>

@@ -1,0 +1,44 @@
+<p-card [styleClass]="'main-card ' + cardClass()">
+  <div class="card-head" (click)="toggle()">
+    <div class="card-head-title">
+      <i class="pi info-icon" [ngClass]="[headIcon(), iconClass()]"></i>
+      <span>{{ title() }}</span>
+    </div>
+    <div class="card-head-right">
+      <i class="pi" [ngClass]="collapsed() ? 'pi-chevron-down' : 'pi-chevron-up'"></i>
+    </div>
+  </div>
+
+  @if (!collapsed()) {
+    <div class="card-body">
+      <div class="main-grid">
+        <div class="gauge-panel">
+          <app-gauge
+            [value]="current()"
+            [progress]="progress()"
+            [ticks]="speedTicks"
+            [variant]="kind()"
+            unit="Mb/s"
+          />
+        </div>
+
+        <div class="chart-panel">
+          <p-chart type="line" [data]="chartData()" [options]="chartOptions()" height="380px" />
+        </div>
+      </div>
+
+      @if (showResults()) {
+        <div class="kpi-grid">
+          <div class="kpi-box" [ngClass]="kpiClass()"><span class="kpi-label">{{ kpiPrefix() }} Min</span><span class="kpi-val">{{ fmtNum(stats().min) }}<small>Mb/s</small></span></div>
+          <div class="kpi-box" [ngClass]="kpiClass()"><span class="kpi-label">{{ kpiPrefix() }} Average</span><span class="kpi-val">{{ fmtNum(stats().avg) }}<small>Mb/s</small></span></div>
+          <div class="kpi-box" [ngClass]="kpiClass()"><span class="kpi-label">{{ kpiPrefix() }} Median</span><span class="kpi-val">{{ fmtNum(stats().median) }}<small>Mb/s</small></span></div>
+          <div class="kpi-box" [ngClass]="kpiClass()"><span class="kpi-label">{{ kpiPrefix() }} Max</span><span class="kpi-val">{{ fmtNum(stats().max) }}<small>Mb/s</small></span></div>
+          <div class="kpi-box lat"><span class="kpi-label">Loaded Min</span><span class="kpi-val">{{ fmtLat(stats().latMin) }}<small>ms</small></span></div>
+          <div class="kpi-box lat"><span class="kpi-label">Loaded Average</span><span class="kpi-val">{{ fmtLat(stats().latAvg) }}<small>ms</small></span></div>
+          <div class="kpi-box lat"><span class="kpi-label">Loaded Max</span><span class="kpi-val">{{ fmtLat(stats().latMax) }}<small>ms</small></span></div>
+          <div class="kpi-box lat"><span class="kpi-label">Loaded Jitter</span><span class="kpi-val">{{ fmtLat(stats().latJitter) }}<small>ms</small></span></div>
+        </div>
+      }
+    </div>
+  }
+</p-card>

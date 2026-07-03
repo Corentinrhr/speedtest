@@ -1,0 +1,48 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+}
+
+.gauge-percent {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-color);
+  line-height: 1;
+}
+.gauge-percent-label {
+  font-size: 0.8rem;
+  color: var(--text-color-secondary);
+  margin-bottom: 0.75rem;
+}
+
+.gauge-svg-wrap {
+  width: 100%;
+  max-width: 240px;
+  margin-bottom: 1rem;
+}
+.gauge-svg { width: 100%; height: auto; overflow: visible; }
+
+.gauge-arc-bg {
+  fill: none;
+  stroke: var(--surface-border);
+  stroke-width: 12;
+  stroke-linecap: round;
+}
+.gauge-arc-value {
+  fill: none;
+  stroke-width: 12;
+  stroke-linecap: round;
+  transition: d 0.25s ease;
+
+  &.grad-dl   { stroke: url(#grad-dl); }
+  &.grad-ul   { stroke: url(#grad-ul); }
+  &.grad-ping { stroke: url(#grad-ping); }
+}
+
+.gauge-tick { stroke: var(--text-color-secondary); stroke-width: 1.5; opacity: 0.5; }
+.gauge-tick-label { fill: var(--text-color-secondary); font-size: 9px; font-weight: 600; }
+.gauge-center-val { fill: var(--text-color); font-size: 22px; font-weight: 700; }
+.gauge-center-unit { fill: var(--text-color-secondary); font-size: 10px; }

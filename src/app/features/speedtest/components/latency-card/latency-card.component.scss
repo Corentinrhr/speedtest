@@ -1,0 +1,89 @@
+:host { display: block; }
+
+:host ::ng-deep .main-card {
+  margin-bottom: 1.5rem;
+  .p-card-body { padding: 0; }
+}
+:host ::ng-deep .card-ping { border-top: 3px solid #4facfe; }
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 1.5rem;
+  cursor: pointer;
+  user-select: none;
+
+  &:hover { background: var(--surface-hover); }
+}
+.card-head-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+.info-icon.pg { color: #4facfe; }
+
+:host ::ng-deep .main-card.compact .compact-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0.5rem 1.5rem 1.75rem;
+}
+
+.compact-chart {
+  width: 100%;
+  min-height: 180px;
+  margin-top: 1.25rem;
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 0.4rem;
+  margin-top: 1.5rem;
+  width: 100%;
+
+  &.kpi-ping { margin-top: 1.25rem; }
+}
+
+.kpi-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.2rem;
+  padding: 0.55rem 0.4rem;
+  border-radius: 10px;
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  border-left: 3px solid var(--surface-border);
+}
+
+.kpi-label {
+  font-size: 0.64rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-color-secondary);
+  white-space: nowrap;
+}
+.kpi-val {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-color);
+  line-height: 1.1;
+  display: flex;
+  align-items: baseline;
+  gap: 0.15rem;
+
+  small {
+    font-size: 0.6rem;
+    font-weight: 400;
+    color: var(--text-color-secondary);
+  }
+}

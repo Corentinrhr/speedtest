@@ -1,0 +1,35 @@
+<p-card styleClass="main-card card-ping compact">
+  <div class="card-head" (click)="toggle()">
+    <div class="card-head-title">
+      <i class="pi pi-clock info-icon pg"></i>
+      <span>Latency</span>
+    </div>
+    <i class="pi" [ngClass]="collapsed() ? 'pi-chevron-down' : 'pi-chevron-up'"></i>
+  </div>
+
+  @if (!collapsed()) {
+    <div class="compact-body">
+      <app-gauge
+        [value]="current()"
+        [progress]="progress()"
+        [ticks]="pingTicks"
+        variant="ping"
+        unit="ms"
+      />
+
+      @if (showResults()) {
+        <div class="compact-chart">
+          <p-chart type="line" [data]="chartData()" [options]="chartOptions" height="180px" />
+        </div>
+
+        <div class="kpi-grid kpi-ping">
+          <div class="kpi-box"><span class="kpi-label">Min</span><span class="kpi-val">{{ fmtNum(stats().min) }}<small>ms</small></span></div>
+          <div class="kpi-box"><span class="kpi-label">Average</span><span class="kpi-val">{{ fmtNum(stats().avg) }}<small>ms</small></span></div>
+          <div class="kpi-box"><span class="kpi-label">Median</span><span class="kpi-val">{{ fmtNum(stats().median) }}<small>ms</small></span></div>
+          <div class="kpi-box"><span class="kpi-label">Max</span><span class="kpi-val">{{ fmtNum(stats().max) }}<small>ms</small></span></div>
+          <div class="kpi-box"><span class="kpi-label">Jitter</span><span class="kpi-val">{{ stats().jitter }}<small>ms</small></span></div>
+        </div>
+      }
+    </div>
+  }
+</p-card>

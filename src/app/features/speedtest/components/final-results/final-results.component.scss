@@ -1,0 +1,40 @@
+:host { display: block; }
+
+.final-results {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-top: 1.25rem;
+
+  @media screen and (max-width: 600px) { grid-template-columns: repeat(2, 1fr); }
+}
+.fr-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+
+  i {
+    font-size: 1.1rem;
+    &.dl { color: #667eea; }
+    &.ul { color: #f5576c; }
+    &.pg { color: #4facfe; }
+    &.jt { color: #43e97b; }
+  }
+  .fr-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-color-secondary);
+  }
+  .fr-val {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--text-color);
+    small { font-size: 0.7rem; font-weight: 400; color: var(--text-color-secondary); }
+  }
+}

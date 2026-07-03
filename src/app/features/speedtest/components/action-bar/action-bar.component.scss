@@ -1,0 +1,108 @@
+:host { display: block; }
+
+.action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  position: relative;
+  padding: 0.5rem 0.25rem;
+}
+
+// ── Big, tall start button ──
+.start-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  min-width: 360px;
+  height: 64px;                    // taller than the previous button
+  padding: 0 2rem;
+  border: none;
+  border-radius: 14px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #fff;
+  cursor: pointer;
+  background: linear-gradient(90deg, #4f46e5, #7c3aed);
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
+
+  i {
+    font-size: 1.25rem;
+  }
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 26px rgba(79, 70, 229, 0.45);
+    filter: brightness(1.05);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 6px 14px rgba(79, 70, 229, 0.35);
+  }
+
+  &:focus-visible {
+    outline: 3px solid rgba(124, 58, 237, 0.4);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  // Running / abort state -> red gradient.
+  &.running {
+    background: linear-gradient(90deg, #ef4444, #f5576c);
+    box-shadow: 0 8px 20px rgba(239, 68, 68, 0.35);
+
+    &:hover:not(:disabled) {
+      box-shadow: 0 12px 26px rgba(239, 68, 68, 0.45);
+    }
+  }
+}
+
+.start-btn-label {
+  line-height: 1;
+}
+
+// ── Settings icon button ──
+.settings-icon-btn {
+  position: absolute;
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid var(--surface-border);
+  border-radius: 12px;
+  background: var(--surface-card);
+  color: var(--text-color-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+
+  i { font-size: 1.25rem; }
+
+  &:hover {
+    background: var(--surface-hover);
+    color: var(--text-color);
+    border-color: var(--primary-color);
+    transform: rotate(30deg);      // subtle cog rotation on hover
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+  }
+}
+
+@media screen and (max-width: 600px) {
+  .start-btn { min-width: 0; width: 100%; }
+  .settings-icon-btn { position: static; }
+  .action-bar { flex-wrap: wrap; }
+}

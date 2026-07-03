@@ -8,26 +8,16 @@
     <i class="pi pi-caret-left"></i>
   </div>
 
-  <!-- Action bar -->
+  <!-- Action bar (nicer, taller start button + settings icon) -->
   <p-card styleClass="action-bar-card">
-    <div class="action-bar">
-      <p-button
-        [label]="buttonLabel()"
-        [icon]="buttonIcon()"
-        [disabled]="buttonDisabled()"
-        [severity]="running() ? 'danger' : 'primary'"
-        styleClass="start-btn"
-        (onClick)="onStartStop()"
-      />
-      <p-button
-        label="Settings"
-        icon="pi pi-cog"
-        [text]="true"
-        severity="secondary"
-        styleClass="settings-btn"
-        (onClick)="openSettings()"
-      />
-    </div>
+    <app-action-bar
+      [label]="buttonLabel()"
+      [icon]="buttonIcon()"
+      [disabled]="buttonDisabled()"
+      [running]="running()"
+      (startStop)="onStartStop()"
+      (openSettings)="openSettings()"
+    />
   </p-card>
 
   <!-- Server selector -->
@@ -41,315 +31,68 @@
     />
   }
 
-  <!-- Two columns: small Latency (left) + stacked DL/UL (right) -->
-  <!-- no-latency collapses the grid to a single column when idle latency is off -->
+  <!-- Two columns: Latency (left) + stacked DL/UL (right) -->
   <div class="results-columns" [class.no-latency]="!testPing()">
-    <!-- Left column: Latency (compact) -->
+    <!-- Left column: Latency -->
     @if (testPing()) {
       <div class="col-latency">
-        <p-card styleClass="main-card card-ping compact">
-          <div class="card-head" (click)="togglePing()">
-            <div class="card-head-title">
-              <i class="pi pi-clock info-icon pg"></i>
-              <span>Latency</span>
-            </div>
-            <i class="pi" [ngClass]="collapsedPing() ? 'pi-chevron-down' : 'pi-chevron-up'"></i>
-          </div>
-
-          @if (!collapsedPing()) {
-            <div class="compact-body">
-              <div class="gauge-percent">{{ pingProgress() }}%</div>
-              <div class="gauge-percent-label">Completed</div>
-
-              <div class="gauge-svg-wrap">
-                <svg viewBox="0 0 220 200" class="gauge-svg">
-                  <defs>
-                    <linearGradient id="gradPing" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stop-color="#4facfe" />
-                      <stop offset="100%" stop-color="#00f2fe" />
-                    </linearGradient>
-                  </defs>
-                  <path [attr.d]="gaugeBgPath()" class="gauge-arc-bg" />
-                  <path [attr.d]="gaugePingPath()" class="gauge-arc-value grad-ping" />
-                  @for (tick of pingTickMarks(); track tick.val) {
-                    <line [attr.x1]="tick.x1" [attr.y1]="tick.y1"
-                          [attr.x2]="tick.x2" [attr.y2]="tick.y2" class="gauge-tick" />
-                    <text [attr.x]="tick.lx" [attr.y]="tick.ly" class="gauge-tick-label"
-                          text-anchor="middle" dominant-baseline="middle">{{ tick.val }}</text>
-                  }
-                  <text x="110" y="118" class="gauge-center-val" text-anchor="middle">{{ fmtNum(currentPing()) }}</text>
-                  <text x="110" y="136" class="gauge-center-unit" text-anchor="middle">ms</text>
-                </svg>
-              </div>
-
-              @if (showResults()) {
-                <div class="compact-chart">
-                  <p-chart type="line" [data]="chartPingData()" [options]="chartOptions" height="180px" />
-                </div>
-
-                <!-- KPI boxes for idle latency (min, average, median, max, jitter) -->
-                <div class="kpi-grid kpi-ping">
-                  <div class="kpi-box"><span class="kpi-label">Min</span><span class="kpi-val">{{ fmtNum(minPing()) }}<small>ms</small></span></div>
-                  <div class="kpi-box"><span class="kpi-label">Average</span><span class="kpi-val">{{ fmtNum(avgPing()) }}<small>ms</small></span></div>
-                  <div class="kpi-box"><span class="kpi-label">Median</span><span class="kpi-val">{{ fmtNum(medianPing()) }}<small>ms</small></span></div>
-                  <div class="kpi-box"><span class="kpi-label">Max</span><span class="kpi-val">{{ fmtNum(maxPing()) }}<small>ms</small></span></div>
-                  <div class="kpi-box"><span class="kpi-label">Jitter</span><span class="kpi-val">{{ jitter() }}<small>ms</small></span></div>
-                </div>
-              }
-            </div>
-          }
-        </p-card>
+        <app-latency-card
+          [current]="currentPing()"
+          [progress]="pingProgress()"
+          [history]="historyPing()"
+          [stats]="pingStats()"
+          [showResults]="showResults()"
+          [(collapsed)]="collapsedPing"
+        />
       </div>
     }
 
     <!-- Right column: Download + Upload stacked -->
     <div class="col-speeds">
-      <!-- Download card -->
       @if (testDl()) {
-        <p-card styleClass="main-card card-download">
-          <div class="card-head" (click)="toggleDl()">
-            <div class="card-head-title">
-              <i class="pi pi-arrow-down info-icon dl"></i>
-              <span>Download Speed</span>
-            </div>
-            <div class="card-head-right">
-              <!-- Latency badge removed as requested -->
-              <i class="pi" [ngClass]="collapsedDl() ? 'pi-chevron-down' : 'pi-chevron-up'"></i>
-            </div>
-          </div>
-
-          @if (!collapsedDl()) {
-            <div class="card-body">
-              <div class="main-grid">
-                <div class="gauge-panel">
-                  <div class="gauge-percent">{{ dlProgress() }}%</div>
-                  <div class="gauge-percent-label">Completed</div>
-
-                  <div class="gauge-svg-wrap">
-                    <svg viewBox="0 0 220 200" class="gauge-svg">
-                      <defs>
-                        <linearGradient id="gradDl" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stop-color="#4f46e5" />
-                          <stop offset="100%" stop-color="#7c3aed" />
-                        </linearGradient>
-                      </defs>
-                      <path [attr.d]="gaugeBgPath()" class="gauge-arc-bg" />
-                      <path [attr.d]="gaugeDlPath()" class="gauge-arc-value grad-dl" />
-                      @for (tick of speedTickMarks(); track tick.val) {
-                        <line [attr.x1]="tick.x1" [attr.y1]="tick.y1"
-                              [attr.x2]="tick.x2" [attr.y2]="tick.y2" class="gauge-tick" />
-                        <text [attr.x]="tick.lx" [attr.y]="tick.ly" class="gauge-tick-label"
-                              text-anchor="middle" dominant-baseline="middle">{{ tick.val }}</text>
-                      }
-                      <text x="110" y="118" class="gauge-center-val" text-anchor="middle">{{ fmtNum(currentDl()) }}</text>
-                      <text x="110" y="136" class="gauge-center-unit" text-anchor="middle">Mb/s</text>
-                    </svg>
-                  </div>
-                </div>
-
-                <div class="chart-panel">
-                  <p-chart type="line" [data]="chartDlData()" [options]="chartDlOptions" height="380px" />
-                </div>
-              </div>
-
-              <!-- KPI boxes below gauge + chart, spanning the full card width -->
-              @if (showResults()) {
-                <div class="kpi-grid">
-                  <div class="kpi-box dl"><span class="kpi-label">DL Min</span><span class="kpi-val">{{ fmtNum(minDl()) }}<small>Mb/s</small></span></div>
-                  <div class="kpi-box dl"><span class="kpi-label">DL Average</span><span class="kpi-val">{{ fmtNum(avgDl()) }}<small>Mb/s</small></span></div>
-                  <div class="kpi-box dl"><span class="kpi-label">DL Median</span><span class="kpi-val">{{ fmtNum(medianDl()) }}<small>Mb/s</small></span></div>
-                  <div class="kpi-box dl"><span class="kpi-label">DL Max</span><span class="kpi-val">{{ fmtNum(maxDl()) }}<small>Mb/s</small></span></div>
-                  <div class="kpi-box lat"><span class="kpi-label">Loaded Min</span><span class="kpi-val">{{ fmtLat(dlLatMin()) }}<small>ms</small></span></div>
-                  <div class="kpi-box lat"><span class="kpi-label">Loaded Average</span><span class="kpi-val">{{ fmtLat(dlLatAvg()) }}<small>ms</small></span></div>
-                  <div class="kpi-box lat"><span class="kpi-label">Loaded Max</span><span class="kpi-val">{{ fmtLat(dlLatMax()) }}<small>ms</small></span></div>
-                  <div class="kpi-box lat"><span class="kpi-label">Loaded Jitter</span><span class="kpi-val">{{ fmtLat(dlLatJitter()) }}<small>ms</small></span></div>
-                </div>
-              }
-            </div>
-          }
-        </p-card>
+        <app-speed-card
+          kind="dl"
+          [current]="currentDl()"
+          [progress]="dlProgress()"
+          [history]="historyDl()"
+          [stats]="dlStats()"
+          [showResults]="showResults()"
+          [(collapsed)]="collapsedDl"
+        />
       }
 
-      <!-- Upload card -->
       @if (testUl()) {
-        <p-card styleClass="main-card card-upload">
-          <div class="card-head" (click)="toggleUl()">
-            <div class="card-head-title">
-              <i class="pi pi-arrow-up info-icon ul"></i>
-              <span>Upload Speed</span>
-            </div>
-            <div class="card-head-right">
-              <!-- Latency badge removed as requested -->
-              <i class="pi" [ngClass]="collapsedUl() ? 'pi-chevron-down' : 'pi-chevron-up'"></i>
-            </div>
-          </div>
-
-          @if (!collapsedUl()) {
-            <div class="card-body">
-              <div class="main-grid">
-                <div class="gauge-panel">
-                  <div class="gauge-percent">{{ ulProgress() }}%</div>
-                  <div class="gauge-percent-label">Completed</div>
-
-                  <div class="gauge-svg-wrap">
-                    <svg viewBox="0 0 220 200" class="gauge-svg">
-                      <defs>
-                        <linearGradient id="gradUl" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stop-color="#f5576c" />
-                          <stop offset="100%" stop-color="#f093fb" />
-                        </linearGradient>
-                      </defs>
-                      <path [attr.d]="gaugeBgPath()" class="gauge-arc-bg" />
-                      <path [attr.d]="gaugeUlPath()" class="gauge-arc-value grad-ul" />
-                      @for (tick of speedTickMarks(); track tick.val) {
-                        <line [attr.x1]="tick.x1" [attr.y1]="tick.y1"
-                              [attr.x2]="tick.x2" [attr.y2]="tick.y2" class="gauge-tick" />
-                        <text [attr.x]="tick.lx" [attr.y]="tick.ly" class="gauge-tick-label"
-                              text-anchor="middle" dominant-baseline="middle">{{ tick.val }}</text>
-                      }
-                      <text x="110" y="118" class="gauge-center-val" text-anchor="middle">{{ fmtNum(currentUl()) }}</text>
-                      <text x="110" y="136" class="gauge-center-unit" text-anchor="middle">Mb/s</text>
-                    </svg>
-                  </div>
-                </div>
-
-                <div class="chart-panel">
-                  <p-chart type="line" [data]="chartUlData()" [options]="chartUlOptions" height="380px" />
-                </div>
-              </div>
-
-              <!-- KPI boxes below gauge + chart, spanning the full card width -->
-              @if (showResults()) {
-                <div class="kpi-grid">
-                  <div class="kpi-box ul"><span class="kpi-label">UL Min</span><span class="kpi-val">{{ fmtNum(minUl()) }}<small>Mb/s</small></span></div>
-                  <div class="kpi-box ul"><span class="kpi-label">UL Average</span><span class="kpi-val">{{ fmtNum(avgUl()) }}<small>Mb/s</small></span></div>
-                  <div class="kpi-box ul"><span class="kpi-label">UL Median</span><span class="kpi-val">{{ fmtNum(medianUl()) }}<small>Mb/s</small></span></div>
-                  <div class="kpi-box ul"><span class="kpi-label">UL Max</span><span class="kpi-val">{{ fmtNum(maxUl()) }}<small>Mb/s</small></span></div>
-                  <div class="kpi-box lat"><span class="kpi-label">Loaded Min</span><span class="kpi-val">{{ fmtLat(ulLatMin()) }}<small>ms</small></span></div>
-                  <div class="kpi-box lat"><span class="kpi-label">Loaded Average</span><span class="kpi-val">{{ fmtLat(ulLatAvg()) }}<small>ms</small></span></div>
-                  <div class="kpi-box lat"><span class="kpi-label">Loaded Max</span><span class="kpi-val">{{ fmtLat(ulLatMax()) }}<small>ms</small></span></div>
-                  <div class="kpi-box lat"><span class="kpi-label">Loaded Jitter</span><span class="kpi-val">{{ fmtLat(ulLatJitter()) }}<small>ms</small></span></div>
-                </div>
-              }
-            </div>
-          }
-        </p-card>
+        <app-speed-card
+          kind="ul"
+          [current]="currentUl()"
+          [progress]="ulProgress()"
+          [history]="historyUl()"
+          [stats]="ulStats()"
+          [showResults]="showResults()"
+          [(collapsed)]="collapsedUl"
+        />
       }
     </div>
   </div>
 
   <!-- Final results -->
   @if (finished()) {
-    <div class="final-results">
-      <div class="fr-item">
-        <i class="pi pi-arrow-down dl"></i>
-        <span class="fr-label">Download</span>
-        <span class="fr-val">{{ downloadSpeed() }} <small>Mbps</small></span>
-      </div>
-      <div class="fr-item">
-        <i class="pi pi-arrow-up ul"></i>
-        <span class="fr-label">Upload</span>
-        <span class="fr-val">{{ uploadSpeed() }} <small>Mbps</small></span>
-      </div>
-      <div class="fr-item">
-        <i class="pi pi-clock pg"></i>
-        <span class="fr-label">Ping</span>
-        <span class="fr-val">{{ ping() }} <small>ms</small></span>
-      </div>
-      <div class="fr-item">
-        <i class="pi pi-wave-pulse jt"></i>
-        <span class="fr-label">Jitter</span>
-        <span class="fr-val">{{ jitter() }} <small>ms</small></span>
-      </div>
-    </div>
+    <app-final-results
+      [download]="downloadSpeed()"
+      [upload]="uploadSpeed()"
+      [ping]="ping()"
+      [jitter]="jitter()"
+    />
   }
 </div>
 
 <!-- Settings dialog -->
-<p-dialog
-  header="Test settings"
+<app-settings-dialog
   [(visible)]="showSettings"
-  [modal]="true"
-  [style]="{ width: '480px' }"
-  [draggable]="false"
-  [resizable]="false"
-  styleClass="settings-dialog-panel"
->
-  <div class="settings-dialog">
-    <p class="settings-section-title">Tests to run</p>
-
-    <!-- Idle latency -->
-    <div class="settings-row">
-      <div class="settings-check">
-        <p-checkbox [(ngModel)]="testPing" [binary]="true" inputId="chkPing" />
-        <label for="chkPing">Idle latency (ping)</label>
-      </div>
-      <div class="settings-slider" [class.disabled]="!testPing()">
-        <div class="slider-head">
-          <span>Duration</span>
-          <p-inputNumber
-            [(ngModel)]="durationPing"
-            [min]="1"
-            [showButtons]="true"
-            [disabled]="!testPing()"
-            suffix=" s"
-            inputStyleClass="duration-input"
-          />
-        </div>
-        <p-slider [(ngModel)]="durationPing" [min]="1" [max]="120" [disabled]="!testPing()" />
-      </div>
-    </div>
-
-    <!-- Download -->
-    <div class="settings-row">
-      <div class="settings-check">
-        <p-checkbox [(ngModel)]="testDl" [binary]="true" inputId="chkDl" />
-        <label for="chkDl">Download</label>
-      </div>
-      <div class="settings-slider" [class.disabled]="!testDl()">
-        <div class="slider-head">
-          <span>Duration</span>
-          <p-inputNumber
-            [(ngModel)]="durationDl"
-            [min]="5"
-            [showButtons]="true"
-            [disabled]="!testDl()"
-            suffix=" s"
-            inputStyleClass="duration-input"
-          />
-        </div>
-        <p-slider [(ngModel)]="durationDl" [min]="5" [max]="120" [disabled]="!testDl()" />
-      </div>
-    </div>
-
-    <!-- Upload -->
-    <div class="settings-row">
-      <div class="settings-check">
-        <p-checkbox [(ngModel)]="testUl" [binary]="true" inputId="chkUl" />
-        <label for="chkUl">Upload</label>
-      </div>
-      <div class="settings-slider" [class.disabled]="!testUl()">
-        <div class="slider-head">
-          <span>Duration</span>
-          <p-inputNumber
-            [(ngModel)]="durationUl"
-            [min]="5"
-            [showButtons]="true"
-            [disabled]="!testUl()"
-            suffix=" s"
-            inputStyleClass="duration-input"
-          />
-        </div>
-        <p-slider [(ngModel)]="durationUl" [min]="5" [max]="120" [disabled]="!testUl()" />
-      </div>
-    </div>
-
-    @if (!atLeastOneTest()) {
-      <p class="settings-warning">Select at least one test.</p>
-    }
-  </div>
-
-  <ng-template pTemplate="footer">
-    <p-button label="Done" icon="pi pi-check" (onClick)="showSettings.set(false)" [disabled]="!atLeastOneTest()" />
-  </ng-template>
-</p-dialog>
+  [(testPing)]="testPing"
+  [(testDl)]="testDl"
+  [(testUl)]="testUl"
+  [(durationPing)]="durationPing"
+  [(durationDl)]="durationDl"
+  [(durationUl)]="durationUl"
+/>

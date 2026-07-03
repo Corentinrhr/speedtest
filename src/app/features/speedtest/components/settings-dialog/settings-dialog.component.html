@@ -1,0 +1,87 @@
+<p-dialog
+  header="Test settings"
+  [(visible)]="visible"
+  [modal]="true"
+  [style]="{ width: '480px' }"
+  [draggable]="false"
+  [resizable]="false"
+  styleClass="settings-dialog-panel"
+>
+  <div class="settings-dialog">
+    <p class="settings-section-title">Tests to run</p>
+
+    <!-- Idle latency -->
+    <div class="settings-row">
+      <div class="settings-check">
+        <p-checkbox [(ngModel)]="testPing" [binary]="true" inputId="chkPing" />
+        <label for="chkPing">Idle latency (ping)</label>
+      </div>
+      <div class="settings-slider" [class.disabled]="!testPing()">
+        <div class="slider-head">
+          <span>Duration</span>
+          <p-inputNumber
+            [(ngModel)]="durationPing"
+            [min]="1"
+            [showButtons]="true"
+            [disabled]="!testPing()"
+            suffix=" s"
+            inputStyleClass="duration-input"
+          />
+        </div>
+        <p-slider [(ngModel)]="durationPing" [min]="1" [max]="120" [disabled]="!testPing()" />
+      </div>
+    </div>
+
+    <!-- Download -->
+    <div class="settings-row">
+      <div class="settings-check">
+        <p-checkbox [(ngModel)]="testDl" [binary]="true" inputId="chkDl" />
+        <label for="chkDl">Download</label>
+      </div>
+      <div class="settings-slider" [class.disabled]="!testDl()">
+        <div class="slider-head">
+          <span>Duration</span>
+          <p-inputNumber
+            [(ngModel)]="durationDl"
+            [min]="5"
+            [showButtons]="true"
+            [disabled]="!testDl()"
+            suffix=" s"
+            inputStyleClass="duration-input"
+          />
+        </div>
+        <p-slider [(ngModel)]="durationDl" [min]="5" [max]="120" [disabled]="!testDl()" />
+      </div>
+    </div>
+
+    <!-- Upload -->
+    <div class="settings-row">
+      <div class="settings-check">
+        <p-checkbox [(ngModel)]="testUl" [binary]="true" inputId="chkUl" />
+        <label for="chkUl">Upload</label>
+      </div>
+      <div class="settings-slider" [class.disabled]="!testUl()">
+        <div class="slider-head">
+          <span>Duration</span>
+          <p-inputNumber
+            [(ngModel)]="durationUl"
+            [min]="5"
+            [showButtons]="true"
+            [disabled]="!testUl()"
+            suffix=" s"
+            inputStyleClass="duration-input"
+          />
+        </div>
+        <p-slider [(ngModel)]="durationUl" [min]="5" [max]="120" [disabled]="!testUl()" />
+      </div>
+    </div>
+
+    @if (!atLeastOneTest()) {
+      <p class="settings-warning">Select at least one test.</p>
+    }
+  </div>
+
+  <ng-template pTemplate="footer">
+    <p-button label="Done" icon="pi pi-check" (onClick)="visible.set(false)" [disabled]="!atLeastOneTest()" />
+  </ng-template>
+</p-dialog>

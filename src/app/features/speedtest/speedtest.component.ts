@@ -8,6 +8,7 @@ import { ChartModule } from 'primeng/chart';
 import { DialogModule } from 'primeng/dialog';
 import { CheckboxModule } from 'primeng/checkbox';
 import { SliderModule } from 'primeng/slider';
+import { InputNumberModule } from 'primeng/inputnumber';
 import { FormsModule } from '@angular/forms';
 import { SpeedtestService } from '@core/services/speedtest.service';
 import { ServerService } from '@core/services/server.service';
@@ -16,8 +17,9 @@ import { SpeedtestServer } from '@core/models/server.model';
 import { ServerSelectorComponent } from '@shared/components/server-selector/server-selector.component';
 
 interface SpeedSample { t: number; v: number; }
+// Sample carrying both speed (v) and loaded latency (lat) for the dual axis
+interface DualSample { t: number; v: number; lat: number | null; }
 
-// Echelles des gauges : Mb/s pour dl/ul, ms pour la latence
 const SPEED_TICKS = [0, 1, 10, 50, 100, 1000] as const;
 const PING_TICKS = [0, 5, 20, 50, 100, 300] as const;
 
@@ -29,6 +31,7 @@ type Phase = 'download' | 'upload' | 'ping';
   imports: [
     CommonModule, FormsModule, ButtonModule, CardModule,
     ChartModule, DialogModule, CheckboxModule, SliderModule,
+    InputNumberModule,
     ServerSelectorComponent,
   ],
   templateUrl: './speedtest.component.html',
@@ -49,28 +52,32 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
 
   readonly showServerSelector = signal(false);
 
-  // ---- Etat pliage des cartes ----
   readonly collapsedDl = signal(false);
   readonly collapsedUl = signal(false);
   readonly collapsedPing = signal(false);
 
-  // ---- Dialog settings ----
   readonly showSettings = signal(false);
-  readonly testPing = signal(true);   // latence a vide
-  readonly testDl = signal(true);     // download
-  readonly testUl = signal(true);     // upload
-  readonly durationDl = signal(15);   // secondes
+  readonly testPing = signal(true);
+  readonly testDl = signal(true);
+  readonly testUl = signal(true);
+  readonly durationDl = signal(15);
   readonly durationUl = signal(15);
   readonly durationPing = signal(5);
 
   private static readonly MAX_WINDOW_MS = 5 * 60 * 1000;
 
-  // Un historique par phase
-  private readonly _historyDl = signal<SpeedSample[]>([]);
-  private readonly _historyUl = signal<SpeedSample[]>([]);
+  private readonly _historyDl = signal<DualSample[]>([]);
+  private readonly _historyUl = signal<DualSample[]>([]);
   private readonly _historyPing = signal<SpeedSample[]>([]);
 
-  // Geometrie de la gauge (partagee)
+  // Sampling clock: capture one point every SAMPLE_INTERVAL_MS while running
+  private lastSampleAt = 0;
+  private static readonly SAMPLE_INTERVAL_MS = 250;
+
+  // Keep the last known loaded latency so the line never drops back to null
+  private lastDlLat: number | null = null;
+  private lastUlLat: number | null = null;
+
   private readonly cx = 110;
   private readonly cy = 110;
   private readonly r = 90;
@@ -91,7 +98,6 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
   );
   readonly showResults = computed(() => this.running() || this.finished());
 
-  // Au moins un type de test doit etre coche
   readonly atLeastOneTest = computed(
     () => this.testPing() || this.testDl() || this.testUl()
   );
@@ -105,103 +111,159 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
     }
   });
 
-  // ---- Progression par phase ----
   readonly dlProgress = computed(() => Math.round(this.data().dlProgress * 100));
   readonly ulProgress = computed(() => Math.round(this.data().ulProgress * 100));
   readonly pingProgress = computed(() => Math.round(this.data().pingProgress * 100));
 
-  // ---- Valeur courante par phase ----
   readonly currentDl = computed(() => this.num(this.data().dlStatus));
   readonly currentUl = computed(() => this.num(this.data().ulStatus));
   readonly currentPing = computed(() => this.num(this.data().pingStatus));
 
-  // ---- Latence sous charge (loaded latency) ----
   readonly dlLoadedPing = computed(() => this.fmtMetric(this.data().dlLoadedPing));
   readonly dlLoadedJitter = computed(() => this.fmtMetric(this.data().dlLoadedJitter));
   readonly ulLoadedPing = computed(() => this.fmtMetric(this.data().ulLoadedPing));
   readonly ulLoadedJitter = computed(() => this.fmtMetric(this.data().ulLoadedJitter));
 
-  // ---- Stats Download ----
   readonly avgDl = computed(() => this.avg(this._historyDl()));
   readonly medianDl = computed(() => this.median(this._historyDl()));
   readonly maxDl = computed(() => this.max(this._historyDl()));
+  readonly minDl = computed(() => this.min(this._historyDl()));
 
-  // ---- Stats Upload ----
   readonly avgUl = computed(() => this.avg(this._historyUl()));
   readonly medianUl = computed(() => this.median(this._historyUl()));
   readonly maxUl = computed(() => this.max(this._historyUl()));
+  readonly minUl = computed(() => this.min(this._historyUl()));
 
-  // ---- Stats Ping ----
   readonly avgPing = computed(() => this.avg(this._historyPing()));
   readonly medianPing = computed(() => this.median(this._historyPing()));
   readonly maxPing = computed(() => this.max(this._historyPing()));
+  readonly minPing = computed(() => this.min(this._historyPing()));
 
-  // ---- Valeurs finales formatees ----
   readonly downloadSpeed = computed(() => this.fmt(this.data().dlStatus));
   readonly uploadSpeed = computed(() => this.fmt(this.data().ulStatus));
   readonly ping = computed(() => this.fmtMetric(this.data().pingStatus));
-  readonly jitter = computed(() => this.fmtMetric(this.data().jitterStatus));
 
-  // ---- Fond de gauge (identique pour toutes) ----
+  // Jitter is defined as max latency minus min latency over the idle history
+  readonly jitter = computed(() => {
+    const vals = this._historyPing().map((s) => s.v).filter((v) => v > 0);
+    if (vals.length < 2) return '--';
+    return (Math.max(...vals) - Math.min(...vals)).toFixed(1);
+  });
+
   readonly gaugeBgPath = computed(() =>
     this.arcPath(this.startAngle, this.startAngle + this.sweepAngle)
   );
 
-  // ---- Gauges par phase ----
-  readonly gaugeDlPath = computed(() =>
-    this.valuePath(this.currentDl(), SPEED_TICKS)
-  );
-  readonly gaugeUlPath = computed(() =>
-    this.valuePath(this.currentUl(), SPEED_TICKS)
-  );
-  readonly gaugePingPath = computed(() =>
-    this.valuePath(this.currentPing(), PING_TICKS)
-  );
+  readonly gaugeDlPath = computed(() => this.valuePath(this.currentDl(), SPEED_TICKS));
+  readonly gaugeUlPath = computed(() => this.valuePath(this.currentUl(), SPEED_TICKS));
+  readonly gaugePingPath = computed(() => this.valuePath(this.currentPing(), PING_TICKS));
 
-  // ---- Ticks (calcules une fois par echelle) ----
   readonly speedTickMarks = computed(() => this.buildTicks(SPEED_TICKS));
   readonly pingTickMarks = computed(() => this.buildTicks(PING_TICKS));
 
-  // ---- Donnees de graphe par phase ----
-  readonly chartDlData = computed(() => this.buildChart(this._historyDl(), '#4f46e5'));
-  readonly chartUlData = computed(() => this.buildChart(this._historyUl(), '#f5576c'));
-  readonly chartPingData = computed(() => this.buildChart(this._historyPing(), '#4facfe'));
+  readonly chartDlData = computed(() => this.buildDualChart(this._historyDl(), '#4f46e5'));
+  readonly chartUlData = computed(() => this.buildDualChart(this._historyUl(), '#f5576c'));
+  readonly chartPingData = computed(() => this.buildPingChart(this._historyPing(), '#4facfe'));
 
-  readonly chartOptions = {
+  // Chart options for speed cards: left axis = Mb/s, right axis = latency (ms)
+  readonly chartDualOptions = {
     maintainAspectRatio: false,
     animation: { duration: 250 },
-    plugins: { legend: { display: false }, tooltip: { enabled: true } },
-    scales: {
-      x: {
-        grid: { display: false },
-        ticks: { color: '#94a3b8', maxTicksLimit: 8, autoSkip: true },
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { display: true, labels: { color: '#94a3b8', usePointStyle: true } },
+      tooltip: {
+        enabled: true,
+        callbacks: {
+          label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) => {
+            const label = ctx.dataset.label ?? '';
+            const val = ctx.parsed.y;
+            if (val === null || val === undefined) return `${label}: --`;
+            const unit = label.toLowerCase().includes('latency') ? ' ms' : ' Mb/s';
+            return `${label}: ${val.toFixed(2)}${unit}`;
+          },
+        },
       },
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#94a3b8', maxTicksLimit: 8, autoSkip: true } },
       y: {
+        type: 'linear', position: 'left',
         grid: { color: 'rgba(148,163,184,0.12)' },
-        ticks: { color: '#94a3b8' },
-        beginAtZero: true,
+        ticks: { color: '#94a3b8' }, beginAtZero: true,
+        title: { display: true, text: 'Mb/s', color: '#94a3b8' },
+      },
+      y1: {
+        type: 'linear', position: 'right',
+        grid: { drawOnChartArea: false },
+        ticks: { color: '#64748b' }, beginAtZero: true,
+        title: { display: true, text: 'Latency (ms)', color: '#64748b' },
       },
     },
   };
 
+  // Chart options for the latency card: single Y axis (ms)
+  readonly chartOptions = {
+    maintainAspectRatio: false,
+    animation: { duration: 250 },
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        enabled: true,
+        callbacks: {
+          label: (ctx: { parsed: { y: number | null } }) => {
+            const val = ctx.parsed.y;
+            return val === null || val === undefined ? '--' : `${val.toFixed(2)} ms`;
+          },
+        },
+      },
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#94a3b8', maxTicksLimit: 8, autoSkip: true } },
+      y: { grid: { color: 'rgba(148,163,184,0.12)' }, ticks: { color: '#94a3b8' }, beginAtZero: true },
+    },
+  };
+
   constructor() {
-    // Enregistre la valeur courante dans le bon historique selon la phase
+    // Sample data on a fixed clock so the number of points matches the duration.
+    // data() changes on every worker status (~200ms), so this effect re-runs often.
     effect(() => {
+      const d = this.data();
       if (!this.running()) return;
-      const phase = this.activePhase();
+
       const now = Date.now();
+      if (now - this.lastSampleAt < SpeedtestComponent.SAMPLE_INTERVAL_MS) return;
+      this.lastSampleAt = now;
 
-      const push = (sig: typeof this._historyDl, v: number) => {
+      const phase = this.activePhase();
+      const cutoff = now - SpeedtestComponent.MAX_WINDOW_MS;
+
+      if (phase === 'download') {
+        const v = this.num(d.dlStatus);
         if (v <= 0) return;
-        sig.update((h) => {
-          const cutoff = now - SpeedtestComponent.MAX_WINDOW_MS;
-          return [...h, { t: now, v }].filter((s) => s.t >= cutoff);
-        });
-      };
-
-      if (phase === 'download') push(this._historyDl, this.currentDl());
-      else if (phase === 'upload') push(this._historyUl, this.currentUl());
-      else if (phase === 'ping') push(this._historyPing, this.currentPing());
+        // Read instant loaded latency; keep last known value if missing this tick
+        const inst = this.num(d.dlLoadedPingInst);
+        if (inst > 0) this.lastDlLat = inst;
+        this._historyDl.update((h) =>
+          [...h, { t: now, v, lat: this.lastDlLat }].filter((s) => s.t >= cutoff)
+        );
+      } else if (phase === 'upload') {
+        const v = this.num(d.ulStatus);
+        if (v <= 0) return;
+        const inst = this.num(d.ulLoadedPingInst);
+        if (inst > 0) this.lastUlLat = inst;
+        this._historyUl.update((h) =>
+          [...h, { t: now, v, lat: this.lastUlLat }].filter((s) => s.t >= cutoff)
+        );
+      } else if (phase === 'ping') {
+        // Use the instant idle latency to get one point per sample tick
+        const v = this.num(d.pingInst) || this.num(d.pingStatus);
+        if (v <= 0) return;
+        this._historyPing.update((h) =>
+          [...h, { t: now, v }].filter((s) => s.t >= cutoff)
+        );
+      }
     });
   }
 
@@ -215,9 +277,7 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
     this.speedtest.abort();
   }
 
-  // ---- Construit le test_order a partir des cases cochees ----
   private buildTestOrder(): string {
-    // I = IP (toujours), puis les phases selectionnees separees par _
     const parts: string[] = [];
     if (this.testPing()) parts.push('P');
     if (this.testDl()) parts.push('D');
@@ -233,13 +293,15 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
       this._historyDl.set([]);
       this._historyUl.set([]);
       this._historyPing.set([]);
+      this.lastSampleAt = 0; // reset sampling clock
+      this.lastDlLat = null; // reset loaded latency memory
+      this.lastUlLat = null;
 
       const runSettings: SpeedtestSettings = {
         ...this.settings,
         test_order: this.buildTestOrder(),
         time_dl_max: this.durationDl(),
         time_ul_max: this.durationUl(),
-        // count_ping approx : ~1 ping toutes les 100ms => durationPing * 10
         count_ping: Math.max(1, this.durationPing() * 10),
       };
       this.speedtest.start(runSettings, this.selectedServer());
@@ -256,12 +318,11 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
     this.serverService.selectServer(server);
   }
 
-  // ---- Pliage des cartes ----
   toggleDl(): void { this.collapsedDl.update((v) => !v); }
   toggleUl(): void { this.collapsedUl.update((v) => !v); }
   togglePing(): void { this.collapsedPing.update((v) => !v); }
 
-  // ================= Helpers geometrie =================
+  // ================= Geometry helpers =================
   private polar(radius: number, angleDeg: number): { x: number; y: number } {
     const a = (angleDeg * Math.PI) / 180;
     return { x: this.cx + radius * Math.cos(a), y: this.cy + radius * Math.sin(a) };
@@ -302,33 +363,80 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
       };
     });
   }
-  private buildChart(h: SpeedSample[], color: string) {
+
+  // Speed chart with a second line for loaded latency (thin dark gray, no fill)
+  private buildDualChart(h: DualSample[], color: string) {
+    return {
+      labels: h.map((s) => this.fmtClock(s.t)),
+      datasets: [
+        {
+          label: 'Speed',
+          data: h.map((s) => s.v),
+          borderColor: color,
+          backgroundColor: color + '14',
+          fill: true,
+          tension: 0.4,
+          pointRadius: 3,
+          pointHoverRadius: 6,
+          pointBackgroundColor: color,
+          borderWidth: 2.5,
+          yAxisID: 'y',
+        },
+        {
+          label: 'Loaded latency',
+          data: h.map((s) => s.lat),
+          borderColor: '#4b5563',
+          backgroundColor: 'transparent',
+          fill: false,
+          tension: 0.3,
+          pointRadius: 3,
+          pointHoverRadius: 6,
+          pointBackgroundColor: '#4b5563',
+          borderWidth: 1.5,
+          spanGaps: true,
+          yAxisID: 'y1',
+        },
+      ],
+    };
+  }
+
+  // Idle latency chart with hoverable points
+  private buildPingChart(h: SpeedSample[], color: string) {
     return {
       labels: h.map((s) => this.fmtClock(s.t)),
       datasets: [{
+        label: 'Latency',
         data: h.map((s) => s.v),
         borderColor: color,
         backgroundColor: color + '14',
-        fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2.5,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 3,
+        pointHoverRadius: 6,
+        pointBackgroundColor: color,
+        borderWidth: 2.5,
       }],
     };
   }
 
-  // ================= Helpers stats =================
-  private avg(h: SpeedSample[]): number {
+  // ================= Stats helpers =================
+  private avg(h: { v: number }[]): number {
     return h.length ? h.reduce((a, b) => a + b.v, 0) / h.length : 0;
   }
-  private median(h: SpeedSample[]): number {
+  private median(h: { v: number }[]): number {
     const v = h.map((s) => s.v).sort((a, b) => a - b);
     if (!v.length) return 0;
     const mid = Math.floor(v.length / 2);
     return v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2;
   }
-  private max(h: SpeedSample[]): number {
+  private max(h: { v: number }[]): number {
     return h.length ? Math.max(...h.map((s) => s.v)) : 0;
   }
+  private min(h: { v: number }[]): number {
+    return h.length ? Math.min(...h.map((s) => s.v)) : 0;
+  }
 
-  // ================= Helpers format =================
+  // ================= Format helpers =================
   private num(value: string): number {
     const n = Number(value);
     return isNaN(n) ? 0 : n;

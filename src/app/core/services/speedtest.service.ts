@@ -131,6 +131,9 @@ export class SpeedtestService {
       dlLoadedJitter: '',
       ulLoadedPing: '',
       ulLoadedJitter: '',
+      dlLoadedPingInst: '',
+      ulLoadedPingInst: '',
+      pingInst: '',
     };
   }
 }

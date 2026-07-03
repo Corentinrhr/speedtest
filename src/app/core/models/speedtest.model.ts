@@ -23,6 +23,10 @@ export interface SpeedtestData {
   dlLoadedJitter: string;
   ulLoadedPing: string;
   ulLoadedJitter: string;
+  // Instant loaded latency, used to plot the real evolution on charts
+  dlLoadedPingInst: string;
+  ulLoadedPingInst: string;
+  pingInst: string;
 }
 
 export interface SpeedtestSettings {

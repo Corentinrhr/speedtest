@@ -1,7 +1,8 @@
 :host { display: block; }
 
+// Wider page so the two columns have room to breathe
 .speedtest-page {
-  max-width: 1100px;
+  max-width: 1440px;
   margin: 0 auto;
 }
 
@@ -18,7 +19,7 @@
   .crumb.active { color: var(--primary-color); font-weight: 600; }
 }
 
-// ── Barre d'action ──
+// ── Action bar ──
 :host ::ng-deep .action-bar-card {
   margin-bottom: 1.25rem;
   .p-card-body { padding: 1rem 1.5rem; }
@@ -45,7 +46,27 @@
   right: 0;
 }
 
-// ── Cartes (espacement + bandeau couleur) ──
+// ── Two-column layout: latency (left) + speeds (right) ──
+.results-columns {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+
+  @media screen and (max-width: 1000px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.col-latency { min-width: 0; }
+
+.col-speeds {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+// ── Cards (spacing + colored top border) ──
 :host ::ng-deep .main-card {
   margin-bottom: 1.5rem;
   .p-card-body { padding: 0; }
@@ -54,7 +75,7 @@
 :host ::ng-deep .card-upload   { border-top: 3px solid #f5576c; }
 :host ::ng-deep .card-ping     { border-top: 3px solid #4facfe; }
 
-// ── En-tete cliquable (pliage) ──
+// ── Clickable header (collapse) ──
 .card-head {
   display: flex;
   align-items: center;
@@ -89,16 +110,36 @@
   background: var(--surface-hover);
 }
 
-// ── Grille interne ──
+// ── Inner grid (speed cards) ──
 .main-grid {
   display: grid;
-  grid-template-columns: 300px 1fr;
+  grid-template-columns: 300px minmax(0, 1fr);
   gap: 1.5rem;
   padding: 0 1.75rem 1.75rem;
 
   @media screen and (max-width: 820px) {
     grid-template-columns: 1fr;
   }
+}
+
+// ── Compact card (latency on the left) ──
+:host ::ng-deep .main-card.compact {
+  .compact-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 0.5rem 1.5rem 1.75rem;
+  }
+}
+.compact-stats {
+  align-self: stretch;
+  margin-top: 0.75rem;
+}
+.compact-chart {
+  width: 100%;
+  min-height: 180px;
+  margin-top: 1.25rem;
 }
 
 // ── Gauge panel ──
@@ -171,17 +212,17 @@
   .loaded-line span { color: var(--primary-color); font-weight: 500; }
 }
 
-// ── Icones d'entete ──
+// ── Header icons ──
 .info-icon {
   &.dl { color: #667eea; }
   &.ul { color: #f5576c; }
   &.pg { color: #4facfe; }
 }
 
-// ── Graphe ──
+// ── Chart ──
 .chart-panel { min-height: 380px; }
 
-// ── Resultats finaux ──
+// ── Final results ──
 .final-results {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -221,28 +262,52 @@
   }
 }
 
-// ── Dialog settings ──
+// ── Settings dialog ──
+// Comfortable padding around the popup content
+:host ::ng-deep .settings-dialog-panel {
+  border-radius: 14px;
+  overflow: hidden;
+
+  .p-dialog-header {
+    padding: 1.5rem 1.75rem 1rem;
+    font-size: 1.15rem;
+    font-weight: 700;
+  }
+  .p-dialog-content {
+    padding: 0.5rem 1.75rem 1rem;
+  }
+  .p-dialog-footer {
+    padding: 1rem 1.75rem 1.5rem;
+  }
+}
+
 .settings-dialog {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1rem;
 }
 .settings-section-title {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   color: var(--text-color-secondary);
-  font-weight: 600;
+  font-weight: 700;
 }
+
+// Each test becomes a soft card so the popup looks tidy
 .settings-row {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--surface-border);
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: 12px;
+  border: 1px solid var(--surface-border);
+  background: var(--surface-card);
+  transition: border-color 0.15s, box-shadow 0.15s;
 
-  &:last-of-type { border-bottom: none; }
+  &:hover { border-color: var(--primary-color); }
 }
+
 .settings-check {
   display: flex;
   align-items: center;
@@ -250,23 +315,50 @@
 
   label { font-weight: 600; color: var(--text-color); cursor: pointer; }
 }
-.settings-slider {
-  padding-left: 1.9rem;
-  transition: opacity 0.2s;
 
-  &.disabled { opacity: 0.4; }
+// Duration block: label + number input on one line, slider below
+.settings-slider {
+  transition: opacity 0.2s;
+  &.disabled { opacity: 0.45; pointer-events: none; }
 }
 .slider-head {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   font-size: 0.8rem;
   color: var(--text-color-secondary);
-  margin-bottom: 0.4rem;
-
-  .slider-val { font-weight: 600; color: var(--primary-color); }
+  font-weight: 600;
+  margin-bottom: 0.85rem;
 }
+
+// Compact, centered number input
+:host ::ng-deep .settings-slider .p-inputnumber {
+  width: 108px;
+}
+:host ::ng-deep .settings-slider .p-inputnumber-input {
+  width: 108px;
+  text-align: center;
+  font-weight: 600;
+  padding: 0.3rem 0.4rem;
+}
+:host ::ng-deep .settings-slider .p-inputnumber-button {
+  width: 2rem;
+}
+
+// Slider polish
+:host ::ng-deep .settings-slider .p-slider {
+  margin: 0.15rem 0.2rem 0.35rem;
+}
+:host ::ng-deep .settings-slider .p-slider .p-slider-range {
+  background: linear-gradient(90deg, #4f46e5, #7c3aed);
+}
+:host ::ng-deep .settings-slider .p-slider .p-slider-handle {
+  border-color: #7c3aed;
+}
+
 .settings-warning {
   color: #e74c3c;
   font-size: 0.85rem;
   font-weight: 500;
+  text-align: center;
 }

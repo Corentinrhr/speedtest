@@ -9,43 +9,55 @@
   padding: 0.5rem 0.25rem;
 }
 
-// ── Big, tall start button ──
+// ── Start button (Material Design, smaller) ──
 .start-btn {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.65rem;
-  min-width: 360px;
-  height: 64px;                    // taller than the previous button
-  padding: 0 2rem;
+  justify-content: center;          // centers content horizontally
+  gap: 0.5rem;
+  min-width: 200px;
+  height: 44px;
+  padding: 0 1.5rem;
   border: none;
-  border-radius: 14px;
-  font-size: 1.15rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: #fff;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: #455A64;
   cursor: pointer;
-  background: linear-gradient(90deg, #4f46e5, #7c3aed);
-  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.35);
-  transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  background: #BBDEFB;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease, background 0.2s ease;
 
+  // The PrimeIcons glyph may be empty (font not loaded). We collapse the
+  // empty icon so it never pushes the label off-center. When the font IS
+  // loaded, the icon shows normally with its width.
   i {
-    font-size: 1.25rem;
+    font-size: 1rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    // If the icon has no visible glyph, it takes no space and the gap
+    // is neutralized, keeping the label perfectly centered.
+    &:empty {
+      display: none;
+    }
   }
 
   &:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 26px rgba(79, 70, 229, 0.45);
-    filter: brightness(1.05);
+    background: #90CAF9;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
 
   &:active:not(:disabled) {
-    transform: translateY(0);
-    box-shadow: 0 6px 14px rgba(79, 70, 229, 0.35);
+    transform: translateY(1px);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   }
 
   &:focus-visible {
-    outline: 3px solid rgba(124, 58, 237, 0.4);
+    outline: 3px solid rgba(100, 181, 246, 0.4);
     outline-offset: 2px;
   }
 
@@ -55,19 +67,24 @@
     box-shadow: none;
   }
 
-  // Running / abort state -> red gradient.
+  // Running / abort state -> red.
   &.running {
-    background: linear-gradient(90deg, #ef4444, #f5576c);
-    box-shadow: 0 8px 20px rgba(239, 68, 68, 0.35);
+    background: #ef4444;
+    color: #fff;
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.35);
 
     &:hover:not(:disabled) {
-      box-shadow: 0 12px 26px rgba(239, 68, 68, 0.45);
+      background: #dc2626;
+      box-shadow: 0 4px 8px rgba(239, 68, 68, 0.45);
     }
   }
 }
 
 .start-btn-label {
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  text-align: center;
 }
 
 // ── Settings icon button ──
@@ -77,22 +94,29 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   border: 1px solid var(--surface-border);
-  border-radius: 12px;
+  border-radius: 8px;
   background: var(--surface-card);
-  color: var(--text-color-secondary);
+  color: #B0B0B0;                  // light gray (drives the inline SVG via currentColor)
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 
-  i { font-size: 1.25rem; }
+  // Inline SVG cog: uses currentColor, so it is always visible in light gray,
+  // independent of the PrimeIcons font.
+  .settings-icon {
+    color: #B0B0B0;
+    display: block;
+    transition: color 0.15s ease;
+  }
 
   &:hover {
     background: var(--surface-hover);
-    color: var(--text-color);
     border-color: var(--primary-color);
     transform: rotate(30deg);      // subtle cog rotation on hover
+
+    .settings-icon { color: #808080; }
   }
 
   &:focus-visible {

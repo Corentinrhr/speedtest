@@ -58,7 +58,7 @@ export function buildTicks(ticks: readonly number[]): TickMark[] {
     const inner = polar(R - 8, angle);
     const label = polar(R + 20, angle);
     return {
-      val: val >= 1000 ? '1G' : String(val),
+      val: val >= 1000 ? '1000' : String(val),
       x1: inner.x, y1: inner.y, x2: outer.x, y2: outer.y,
       lx: label.x, ly: label.y,
     };

@@ -18,7 +18,8 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--surface-card);
+  // Light grey background as requested.
+  background: #ECEFF1;
   border-right: 1px solid var(--surface-border);
   transition: width 0.25s ease, min-width 0.25s ease;
   overflow: hidden;
@@ -65,7 +66,15 @@
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
 
-  // Visible icon color, independent from the PrimeNG theme.
+  // Inline SVG icon. Uses currentColor so it follows the button color,
+  // independent from the PrimeNG icon font (which may not be loaded).
+  .toggle-icon {
+    color: var(--text-color-secondary);
+    transition: color 0.15s ease;
+    display: block;
+  }
+
+  // Keep backward-compat if a PrimeIcons <i> is ever used here again.
   i {
     font-size: 1.2rem;
     color: var(--text-color-secondary);
@@ -73,8 +82,9 @@
   }
 
   &:hover {
-    background: var(--surface-hover);
+    background: rgba(0, 0, 0, 0.06);
 
+    .toggle-icon,
     i {
       color: var(--text-color);
     }
@@ -116,7 +126,7 @@
   }
 
   &:hover {
-    background: var(--surface-hover);
+    background: rgba(0, 0, 0, 0.06);
     color: var(--text-color);
   }
 

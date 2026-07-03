@@ -44,12 +44,7 @@ export class LayoutComponent {
   readonly menuItems = MENU_ITEMS;
   readonly sidebarCollapsed = signal(false);
 
-  // Remembers whether the CURRENT collapse was triggered automatically by a
-  // test. Only an auto-collapse gets auto-expanded at the end, so a manual
-  // choice by the user is never overridden.
-  private autoCollapsed = false;
-
-  // Previous running state, used to detect transitions (start / end of test).
+  // Previous running state, used to detect transitions (start of test).
   private wasRunning = false;
 
   constructor() {
@@ -62,20 +57,14 @@ export class LayoutComponent {
 
       untracked(() => {
         // Transition NOT running -> running : a test just started.
+        // Collapse to free space.
         if (running && !this.wasRunning) {
-          // Collapse to free space (remember it was automatic).
           this.sidebarCollapsed.set(true);
-          this.autoCollapsed = true;
         }
 
-        // Transition running -> NOT running : the test just ended.
-        if (!running && this.wasRunning) {
-          // Auto-expand ONLY if WE collapsed it automatically.
-          if (this.autoCollapsed) {
-            this.sidebarCollapsed.set(false);
-            this.autoCollapsed = false;
-          }
-        }
+        // NOTE: we intentionally do NOT auto-expand the sidebar when the
+        // test ends. The sidebar keeps whatever position it currently has,
+        // so the user stays in control of its state.
 
         this.wasRunning = running;
       });
@@ -83,9 +72,7 @@ export class LayoutComponent {
   }
 
   toggleSidebar(): void {
-    // Manual toggle always wins. It also clears the auto-collapse flag so the
-    // sidebar won't be automatically re-expanded against the user's wish.
+    // Manual toggle: the user is always in control of the sidebar position.
     this.sidebarCollapsed.update((v) => !v);
-    this.autoCollapsed = false;
   }
 }

@@ -289,14 +289,14 @@
           <span>Duration</span>
           <p-inputNumber
             [(ngModel)]="durationPing"
-            [min]="1" [max]="30"
+            [min]="1"
             [showButtons]="true"
             [disabled]="!testPing()"
             suffix=" s"
             inputStyleClass="duration-input"
           />
         </div>
-        <p-slider [(ngModel)]="durationPing" [min]="1" [max]="30" [disabled]="!testPing()" />
+        <p-slider [(ngModel)]="durationPing" [min]="1" [max]="120" [disabled]="!testPing()" />
       </div>
     </div>
 
@@ -311,14 +311,14 @@
           <span>Duration</span>
           <p-inputNumber
             [(ngModel)]="durationDl"
-            [min]="5" [max]="60"
+            [min]="5"
             [showButtons]="true"
             [disabled]="!testDl()"
             suffix=" s"
             inputStyleClass="duration-input"
           />
         </div>
-        <p-slider [(ngModel)]="durationDl" [min]="5" [max]="60" [disabled]="!testDl()" />
+        <p-slider [(ngModel)]="durationDl" [min]="5" [max]="120" [disabled]="!testDl()" />
       </div>
     </div>
 
@@ -333,14 +333,14 @@
           <span>Duration</span>
           <p-inputNumber
             [(ngModel)]="durationUl"
-            [min]="5" [max]="60"
+            [min]="5"
             [showButtons]="true"
             [disabled]="!testUl()"
             suffix=" s"
             inputStyleClass="duration-input"
           />
         </div>
-        <p-slider [(ngModel)]="durationUl" [min]="5" [max]="60" [disabled]="!testUl()" />
+        <p-slider [(ngModel)]="durationUl" [min]="5" [max]="120" [disabled]="!testUl()" />
       </div>
     </div>
 

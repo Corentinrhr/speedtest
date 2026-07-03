@@ -15,7 +15,25 @@
         [attr.aria-label]="sidebarCollapsed() ? 'Expand menu' : 'Collapse menu'"
         title="Toggle menu"
       >
-        <i class="pi" [ngClass]="sidebarCollapsed() ? 'pi-bars' : 'pi-angle-left'"></i>
+        <!-- Inline SVG so the button is always visible, even if the
+             PrimeIcons font is not loaded. -->
+        @if (sidebarCollapsed()) {
+          <!-- Hamburger icon (expand) -->
+          <svg class="toggle-icon" viewBox="0 0 24 24" width="22" height="22"
+               fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        } @else {
+          <!-- Chevron-left icon (collapse) -->
+          <svg class="toggle-icon" viewBox="0 0 24 24" width="22" height="22"
+               fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        }
       </button>
     </div>
 

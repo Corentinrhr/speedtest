@@ -126,6 +126,11 @@ export class SpeedtestService {
       ulProgress: 0,
       pingProgress: 0,
       testId: null,
+      // >>> MODIF <<<
+      dlLoadedPing: '',
+      dlLoadedJitter: '',
+      ulLoadedPing: '',
+      ulLoadedJitter: '',
     };
   }
 }

@@ -14,7 +14,11 @@ import { ServerSelectorComponent } from '@shared/components/server-selector/serv
 
 interface SpeedSample { t: number; v: number; }
 
-const GAUGE_TICKS = [0, 1, 10, 50, 100, 1000] as const;
+// Echelles des gauges : Mb/s pour dl/ul, ms pour la latence
+const SPEED_TICKS = [0, 1, 10, 50, 100, 1000] as const;
+const PING_TICKS = [0, 5, 20, 50, 100, 300] as const;
+
+type Phase = 'download' | 'upload' | 'ping';
 
 @Component({
   selector: 'app-speedtest',
@@ -42,10 +46,13 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
   readonly showServerSelector = signal(false);
 
   private static readonly MAX_WINDOW_MS = 5 * 60 * 1000;
-  private readonly _history = signal<SpeedSample[]>([]);
 
-  // Gauge geometry
-  readonly gaugeTicks = GAUGE_TICKS;
+  // Un historique par phase
+  private readonly _historyDl = signal<SpeedSample[]>([]);
+  private readonly _historyUl = signal<SpeedSample[]>([]);
+  private readonly _historyPing = signal<SpeedSample[]>([]);
+
+  // Geometrie de la gauge (partagee)
   private readonly cx = 110;
   private readonly cy = 110;
   private readonly r = 90;
@@ -66,98 +73,70 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
   );
   readonly showResults = computed(() => this.running() || this.finished());
 
-  readonly activePhase = computed<'download' | 'upload' | 'ping' | 'idle'>(() => {
+  readonly activePhase = computed<Phase | 'idle'>(() => {
     switch (this.data().testState) {
       case TestState.DOWNLOAD: return 'download';
       case TestState.UPLOAD: return 'upload';
       case TestState.PING_JITTER: return 'ping';
-      case TestState.FINISHED: return 'download';
       default: return 'idle';
     }
   });
 
-  readonly gaugeLabel = computed(() => {
-    switch (this.activePhase()) {
-      case 'upload': return 'Upload Speed';
-      case 'ping': return 'Ping';
-      default: return 'Download Speed';
-    }
-  });
+  // ---- Progression par phase ----
+  readonly dlProgress = computed(() => Math.round(this.data().dlProgress * 100));
+  readonly ulProgress = computed(() => Math.round(this.data().ulProgress * 100));
+  readonly pingProgress = computed(() => Math.round(this.data().pingProgress * 100));
 
-  readonly gaugeProgress = computed(() => {
-    const d = this.data();
-    switch (this.activePhase()) {
-      case 'download': return Math.round(d.dlProgress * 100);
-      case 'upload': return Math.round(d.ulProgress * 100);
-      case 'ping': return Math.round(d.pingProgress * 100);
-      default: return this.finished() ? 100 : 0;
-    }
-  });
+  // ---- Valeur courante par phase ----
+  readonly currentDl = computed(() => this.num(this.data().dlStatus));
+  readonly currentUl = computed(() => this.num(this.data().ulStatus));
+  readonly currentPing = computed(() => this.num(this.data().pingStatus));
 
-  readonly currentSpeed = computed(() => {
-    const d = this.data();
-    const raw = this.activePhase() === 'upload' ? d.ulStatus : d.dlStatus;
-    const n = Number(raw);
-    return isNaN(n) ? 0 : n;
-  });
+  // ---- Stats Download ----
+  readonly avgDl = computed(() => this.avg(this._historyDl()));
+  readonly medianDl = computed(() => this.median(this._historyDl()));
+  readonly maxDl = computed(() => this.max(this._historyDl()));
 
-  readonly avgSpeed = computed(() => {
-    const h = this._history();
-    return h.length ? h.reduce((a, b) => a + b.v, 0) / h.length : 0;
-  });
-  readonly medianSpeed = computed(() => {
-    const v = this._history().map((s) => s.v).sort((a, b) => a - b);
-    if (!v.length) return 0;
-    const mid = Math.floor(v.length / 2);
-    return v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2;
-  });
-  readonly maxSpeed = computed(() => {
-    const h = this._history();
-    return h.length ? Math.max(...h.map((s) => s.v)) : 0;
-  });
+  // ---- Stats Upload ----
+  readonly avgUl = computed(() => this.avg(this._historyUl()));
+  readonly medianUl = computed(() => this.median(this._historyUl()));
+  readonly maxUl = computed(() => this.max(this._historyUl()));
 
+  // ---- Stats Ping ----
+  readonly avgPing = computed(() => this.avg(this._historyPing()));
+  readonly medianPing = computed(() => this.median(this._historyPing()));
+  readonly maxPing = computed(() => this.max(this._historyPing()));
+
+  // ---- Valeurs finales formatees ----
   readonly downloadSpeed = computed(() => this.fmt(this.data().dlStatus));
   readonly uploadSpeed = computed(() => this.fmt(this.data().ulStatus));
   readonly ping = computed(() => this.fmtMetric(this.data().pingStatus));
   readonly jitter = computed(() => this.fmtMetric(this.data().jitterStatus));
 
+  // ---- Fond de gauge (identique pour toutes) ----
   readonly gaugeBgPath = computed(() =>
     this.arcPath(this.startAngle, this.startAngle + this.sweepAngle)
   );
-  readonly gaugeValueAngle = computed(() =>
-    this.startAngle + this.speedToFraction(this.currentSpeed()) * this.sweepAngle
+
+  // ---- Gauges par phase ----
+  readonly gaugeDlPath = computed(() =>
+    this.valuePath(this.currentDl(), SPEED_TICKS)
   );
-  readonly gaugeValuePath = computed(() =>
-    this.arcPath(this.startAngle, this.gaugeValueAngle())
+  readonly gaugeUlPath = computed(() =>
+    this.valuePath(this.currentUl(), SPEED_TICKS)
+  );
+  readonly gaugePingPath = computed(() =>
+    this.valuePath(this.currentPing(), PING_TICKS)
   );
 
-  readonly gaugeTickMarks = computed(() =>
-    GAUGE_TICKS.map((val, i) => {
-      const frac = i / (GAUGE_TICKS.length - 1);
-      const angle = this.startAngle + frac * this.sweepAngle;
-      const outer = this.polar(this.r + 4, angle);
-      const inner = this.polar(this.r - 8, angle);
-      const label = this.polar(this.r + 20, angle);
-      return {
-        val: val >= 1000 ? '1G' : String(val),
-        x1: inner.x, y1: inner.y, x2: outer.x, y2: outer.y,
-        lx: label.x, ly: label.y,
-      };
-    })
-  );
+  // ---- Ticks (calcules une fois par echelle) ----
+  readonly speedTickMarks = computed(() => this.buildTicks(SPEED_TICKS));
+  readonly pingTickMarks = computed(() => this.buildTicks(PING_TICKS));
 
-  readonly chartData = computed(() => {
-    const h = this._history();
-    return {
-      labels: h.map((s) => this.fmtClock(s.t)),
-      datasets: [{
-        data: h.map((s) => s.v),
-        borderColor: '#4f46e5',
-        backgroundColor: 'rgba(79, 70, 229, 0.08)',
-        fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2.5,
-      }],
-    };
-  });
+  // ---- Donnees de graphe par phase ----
+  readonly chartDlData = computed(() => this.buildChart(this._historyDl(), '#4f46e5'));
+  readonly chartUlData = computed(() => this.buildChart(this._historyUl(), '#f5576c'));
+  readonly chartPingData = computed(() => this.buildChart(this._historyPing(), '#4facfe'));
 
   readonly chartOptions = {
     maintainAspectRatio: false,
@@ -177,17 +156,24 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
   };
 
   constructor() {
-    // allowSignalWrites requis : on écrit _history depuis un effect
+    // Enregistre la valeur courante dans le bon historique selon la phase
     effect(() => {
-      const running = this.running();
-      const v = this.currentSpeed();
-      if (!running || v <= 0) return;
+      if (!this.running()) return;
+      const phase = this.activePhase();
       const now = Date.now();
-      this._history.update((h) => {
-        const cutoff = now - SpeedtestComponent.MAX_WINDOW_MS;
-        return [...h, { t: now, v }].filter((s) => s.t >= cutoff);
-      });
-    }, { allowSignalWrites: true });
+
+      const push = (sig: typeof this._historyDl, v: number) => {
+        if (v <= 0) return;
+        sig.update((h) => {
+          const cutoff = now - SpeedtestComponent.MAX_WINDOW_MS;
+          return [...h, { t: now, v }].filter((s) => s.t >= cutoff);
+        });
+      };
+
+      if (phase === 'download') push(this._historyDl, this.currentDl());
+      else if (phase === 'upload') push(this._historyUl, this.currentUl());
+      else if (phase === 'ping') push(this._historyPing, this.currentPing());
+    });
   }
 
   async ngOnInit(): Promise<void> {
@@ -204,7 +190,9 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
     if (this.running()) {
       this.speedtest.abort();
     } else {
-      this._history.set([]);
+      this._historyDl.set([]);
+      this._historyUl.set([]);
+      this._historyPing.set([]);
       this.speedtest.start(this.settings, this.selectedServer());
     }
   }
@@ -216,6 +204,7 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
     this.serverService.selectServer(server);
   }
 
+  // ================= Helpers geometrie =================
   private polar(radius: number, angleDeg: number): { x: number; y: number } {
     const a = (angleDeg * Math.PI) / 180;
     return { x: this.cx + radius * Math.cos(a), y: this.cy + radius * Math.sin(a) };
@@ -226,19 +215,67 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
     const largeArc = toDeg - fromDeg > 180 ? 1 : 0;
     return `M ${start.x} ${start.y} A ${this.r} ${this.r} 0 ${largeArc} 1 ${end.x} ${end.y}`;
   }
-  private speedToFraction(speed: number): number {
-    if (speed <= GAUGE_TICKS[0]) return 0;
-    const last = GAUGE_TICKS.length - 1;
-    if (speed >= GAUGE_TICKS[last]) return 1;
+  private valuePath(value: number, ticks: readonly number[]): string {
+    const angle = this.startAngle + this.toFraction(value, ticks) * this.sweepAngle;
+    return this.arcPath(this.startAngle, angle);
+  }
+  private toFraction(value: number, ticks: readonly number[]): number {
+    const last = ticks.length - 1;
+    if (value <= ticks[0]) return 0;
+    if (value >= ticks[last]) return 1;
     for (let i = 1; i <= last; i++) {
-      if (speed <= GAUGE_TICKS[i]) {
-        const segFrac = (speed - GAUGE_TICKS[i - 1]) / (GAUGE_TICKS[i] - GAUGE_TICKS[i - 1]);
+      if (value <= ticks[i]) {
+        const segFrac = (value - ticks[i - 1]) / (ticks[i] - ticks[i - 1]);
         return (i - 1 + segFrac) / last;
       }
     }
     return 1;
   }
+  private buildTicks(ticks: readonly number[]) {
+    return ticks.map((val, i) => {
+      const frac = i / (ticks.length - 1);
+      const angle = this.startAngle + frac * this.sweepAngle;
+      const outer = this.polar(this.r + 4, angle);
+      const inner = this.polar(this.r - 8, angle);
+      const label = this.polar(this.r + 20, angle);
+      return {
+        val: val >= 1000 ? '1G' : String(val),
+        x1: inner.x, y1: inner.y, x2: outer.x, y2: outer.y,
+        lx: label.x, ly: label.y,
+      };
+    });
+  }
+  private buildChart(h: SpeedSample[], color: string) {
+    return {
+      labels: h.map((s) => this.fmtClock(s.t)),
+      datasets: [{
+        data: h.map((s) => s.v),
+        borderColor: color,
+        backgroundColor: color + '14', // ~8% opacite (hex alpha)
+        fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2.5,
+      }],
+    };
+  }
 
+  // ================= Helpers stats =================
+  private avg(h: SpeedSample[]): number {
+    return h.length ? h.reduce((a, b) => a + b.v, 0) / h.length : 0;
+  }
+  private median(h: SpeedSample[]): number {
+    const v = h.map((s) => s.v).sort((a, b) => a - b);
+    if (!v.length) return 0;
+    const mid = Math.floor(v.length / 2);
+    return v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2;
+  }
+  private max(h: SpeedSample[]): number {
+    return h.length ? Math.max(...h.map((s) => s.v)) : 0;
+  }
+
+  // ================= Helpers format =================
+  private num(value: string): number {
+    const n = Number(value);
+    return isNaN(n) ? 0 : n;
+  }
   private fmt(value: string): string {
     if (!value) return '--';
     const n = Number(value);

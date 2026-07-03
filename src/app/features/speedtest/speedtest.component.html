@@ -47,11 +47,11 @@
       <!-- Colonne gauche : gauge SVG -->
       <div class="gauge-panel">
         <div class="gauge-header">
-          <span class="gauge-title"></span>
+          <span class="gauge-title">{{ gaugeLabel() }}</span>
           <i class="pi pi-info-circle info-icon"></i>
         </div>
 
-        <div class="gauge-percent">%</div>
+        <div class="gauge-percent">{{ gaugeProgress() }}%</div>
         <div class="gauge-percent-label">Completed</div>
 
         <div class="gauge-svg-wrap">
@@ -76,11 +76,11 @@
                 [attr.x]="tick.lx" [attr.y]="tick.ly"
                 class="gauge-tick-label"
                 text-anchor="middle" dominant-baseline="middle"
-              ></text>
+              >{{ tick.val }}</text>
             }
 
             <text x="110" y="118" class="gauge-center-val" text-anchor="middle">
-              
+              {{ fmtNum(currentSpeed()) }}
             </text>
             <text x="110" y="136" class="gauge-center-unit" text-anchor="middle">
               Mb/s
@@ -90,9 +90,9 @@
 
         @if (showResults()) {
           <div class="gauge-stats">
-            <div><span>Average :</span>  Mb/s</div>
-            <div><span>Median :</span>  Mb/s</div>
-            <div><span>Max :</span>  Mb/s</div>
+            <div><span>Average :</span> {{ fmtNum(avgSpeed()) }} Mb/s</div>
+            <div><span>Median :</span> {{ fmtNum(medianSpeed()) }} Mb/s</div>
+            <div><span>Max :</span> {{ fmtNum(maxSpeed()) }} Mb/s</div>
           </div>
         }
       </div>
@@ -110,22 +110,22 @@
       <div class="fr-item">
         <i class="pi pi-arrow-down dl"></i>
         <span class="fr-label">Download</span>
-        <span class="fr-val"> <small>Mbps</small></span>
+        <span class="fr-val">{{ downloadSpeed() }} <small>Mbps</small></span>
       </div>
       <div class="fr-item">
         <i class="pi pi-arrow-up ul"></i>
         <span class="fr-label">Upload</span>
-        <span class="fr-val"> <small>Mbps</small></span>
+        <span class="fr-val">{{ uploadSpeed() }} <small>Mbps</small></span>
       </div>
       <div class="fr-item">
         <i class="pi pi-clock pg"></i>
         <span class="fr-label">Ping</span>
-        <span class="fr-val"> <small>ms</small></span>
+        <span class="fr-val">{{ ping() }} <small>ms</small></span>
       </div>
       <div class="fr-item">
         <i class="pi pi-wave-pulse jt"></i>
         <span class="fr-label">Jitter</span>
-        <span class="fr-val"> <small>ms</small></span>
+        <span class="fr-val">{{ jitter() }} <small>ms</small></span>
       </div>
     </div>
   }

@@ -19,6 +19,10 @@ export interface SpeedtestData {
   ulProgress: number;
   pingProgress: number;
   testId: string | null;
+  dlLoadedPing: string;
+  dlLoadedJitter: string;
+  ulLoadedPing: string;
+  ulLoadedJitter: string;
 }
 
 export interface SpeedtestSettings {

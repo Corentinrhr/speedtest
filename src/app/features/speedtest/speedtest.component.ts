@@ -5,6 +5,9 @@ import { CommonModule } from '@angular/common';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { ChartModule } from 'primeng/chart';
+import { DialogModule } from 'primeng/dialog';
+import { CheckboxModule } from 'primeng/checkbox';
+import { SliderModule } from 'primeng/slider';
 import { FormsModule } from '@angular/forms';
 import { SpeedtestService } from '@core/services/speedtest.service';
 import { ServerService } from '@core/services/server.service';
@@ -25,7 +28,8 @@ type Phase = 'download' | 'upload' | 'ping';
   standalone: true,
   imports: [
     CommonModule, FormsModule, ButtonModule, CardModule,
-    ChartModule, ServerSelectorComponent,
+    ChartModule, DialogModule, CheckboxModule, SliderModule,
+    ServerSelectorComponent,
   ],
   templateUrl: './speedtest.component.html',
   styleUrl: './speedtest.component.scss',
@@ -44,6 +48,20 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
   readonly serversLoading = this.serverService.loading;
 
   readonly showServerSelector = signal(false);
+
+  // ---- Etat pliage des cartes ----
+  readonly collapsedDl = signal(false);
+  readonly collapsedUl = signal(false);
+  readonly collapsedPing = signal(false);
+
+  // ---- Dialog settings ----
+  readonly showSettings = signal(false);
+  readonly testPing = signal(true);   // latence a vide
+  readonly testDl = signal(true);     // download
+  readonly testUl = signal(true);     // upload
+  readonly durationDl = signal(15);   // secondes
+  readonly durationUl = signal(15);
+  readonly durationPing = signal(5);
 
   private static readonly MAX_WINDOW_MS = 5 * 60 * 1000;
 
@@ -69,9 +87,14 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
     this.running() ? 'pi pi-stop' : 'pi pi-play'
   );
   readonly buttonDisabled = computed(
-    () => this.serversLoading() && !this.running()
+    () => (this.serversLoading() && !this.running()) || !this.atLeastOneTest()
   );
   readonly showResults = computed(() => this.running() || this.finished());
+
+  // Au moins un type de test doit etre coche
+  readonly atLeastOneTest = computed(
+    () => this.testPing() || this.testDl() || this.testUl()
+  );
 
   readonly activePhase = computed<Phase | 'idle'>(() => {
     switch (this.data().testState) {
@@ -91,6 +114,12 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
   readonly currentDl = computed(() => this.num(this.data().dlStatus));
   readonly currentUl = computed(() => this.num(this.data().ulStatus));
   readonly currentPing = computed(() => this.num(this.data().pingStatus));
+
+  // ---- Latence sous charge (loaded latency) ----
+  readonly dlLoadedPing = computed(() => this.fmtMetric(this.data().dlLoadedPing));
+  readonly dlLoadedJitter = computed(() => this.fmtMetric(this.data().dlLoadedJitter));
+  readonly ulLoadedPing = computed(() => this.fmtMetric(this.data().ulLoadedPing));
+  readonly ulLoadedJitter = computed(() => this.fmtMetric(this.data().ulLoadedJitter));
 
   // ---- Stats Download ----
   readonly avgDl = computed(() => this.avg(this._historyDl()));
@@ -186,23 +215,51 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
     this.speedtest.abort();
   }
 
+  // ---- Construit le test_order a partir des cases cochees ----
+  private buildTestOrder(): string {
+    // I = IP (toujours), puis les phases selectionnees separees par _
+    const parts: string[] = [];
+    if (this.testPing()) parts.push('P');
+    if (this.testDl()) parts.push('D');
+    if (this.testUl()) parts.push('U');
+    return 'I_' + parts.join('_');
+  }
+
   onStartStop(): void {
     if (this.running()) {
       this.speedtest.abort();
     } else {
+      if (!this.atLeastOneTest()) return;
       this._historyDl.set([]);
       this._historyUl.set([]);
       this._historyPing.set([]);
-      this.speedtest.start(this.settings, this.selectedServer());
+
+      const runSettings: SpeedtestSettings = {
+        ...this.settings,
+        test_order: this.buildTestOrder(),
+        time_dl_max: this.durationDl(),
+        time_ul_max: this.durationUl(),
+        // count_ping approx : ~1 ping toutes les 100ms => durationPing * 10
+        count_ping: Math.max(1, this.durationPing() * 10),
+      };
+      this.speedtest.start(runSettings, this.selectedServer());
     }
   }
 
   toggleServerSelector(): void {
     this.showServerSelector.update((v) => !v);
   }
+  openSettings(): void {
+    this.showSettings.set(true);
+  }
   onServerChange(server: SpeedtestServer): void {
     this.serverService.selectServer(server);
   }
+
+  // ---- Pliage des cartes ----
+  toggleDl(): void { this.collapsedDl.update((v) => !v); }
+  toggleUl(): void { this.collapsedUl.update((v) => !v); }
+  togglePing(): void { this.collapsedPing.update((v) => !v); }
 
   // ================= Helpers geometrie =================
   private polar(radius: number, angleDeg: number): { x: number; y: number } {
@@ -251,7 +308,7 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
       datasets: [{
         data: h.map((s) => s.v),
         borderColor: color,
-        backgroundColor: color + '14', // ~8% opacite (hex alpha)
+        backgroundColor: color + '14',
         fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2.5,
       }],
     };

@@ -23,6 +23,11 @@ interface DualSample { t: number; v: number; lat: number | null; }
 const SPEED_TICKS = [0, 1, 10, 50, 100, 1000] as const;
 const PING_TICKS = [0, 5, 20, 50, 100, 300] as const;
 
+// Colors used both for gauges and for color-coding the chart axes
+const COLOR_DL = '#4f46e5';   // blue/indigo  -> Download
+const COLOR_UL = '#f5576c';   // red          -> Upload
+const COLOR_LAT = '#4b5563';  // dark gray    -> Loaded latency
+
 type Phase = 'download' | 'upload' | 'ping';
 
 @Component({
@@ -139,6 +144,19 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
   readonly maxPing = computed(() => this.max(this._historyPing()));
   readonly minPing = computed(() => this.min(this._historyPing()));
 
+  // ===== Loaded-latency stats (computed from the chart history) =====
+  // We extract the non-null "lat" values captured during DL/UL to build
+  // min / average / max / jitter KPIs for the loaded latency.
+  readonly dlLatMin = computed(() => this.latMin(this._historyDl()));
+  readonly dlLatAvg = computed(() => this.latAvg(this._historyDl()));
+  readonly dlLatMax = computed(() => this.latMax(this._historyDl()));
+  readonly dlLatJitter = computed(() => this.latJitter(this._historyDl()));
+
+  readonly ulLatMin = computed(() => this.latMin(this._historyUl()));
+  readonly ulLatAvg = computed(() => this.latAvg(this._historyUl()));
+  readonly ulLatMax = computed(() => this.latMax(this._historyUl()));
+  readonly ulLatJitter = computed(() => this.latJitter(this._historyUl()));
+
   readonly downloadSpeed = computed(() => this.fmt(this.data().dlStatus));
   readonly uploadSpeed = computed(() => this.fmt(this.data().ulStatus));
   readonly ping = computed(() => this.fmtMetric(this.data().pingStatus));
@@ -161,46 +179,15 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
   readonly speedTickMarks = computed(() => this.buildTicks(SPEED_TICKS));
   readonly pingTickMarks = computed(() => this.buildTicks(PING_TICKS));
 
-  readonly chartDlData = computed(() => this.buildDualChart(this._historyDl(), '#4f46e5'));
-  readonly chartUlData = computed(() => this.buildDualChart(this._historyUl(), '#f5576c'));
+  readonly chartDlData = computed(() => this.buildDualChart(this._historyDl(), COLOR_DL));
+  readonly chartUlData = computed(() => this.buildDualChart(this._historyUl(), COLOR_UL));
   readonly chartPingData = computed(() => this.buildPingChart(this._historyPing(), '#4facfe'));
 
-  // Chart options for speed cards: left axis = Mb/s, right axis = latency (ms)
-  readonly chartDualOptions = {
-    maintainAspectRatio: false,
-    animation: { duration: 250 },
-    interaction: { mode: 'index', intersect: false },
-    plugins: {
-      legend: { display: true, labels: { color: '#94a3b8', usePointStyle: true } },
-      tooltip: {
-        enabled: true,
-        callbacks: {
-          label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) => {
-            const label = ctx.dataset.label ?? '';
-            const val = ctx.parsed.y;
-            if (val === null || val === undefined) return `${label}: --`;
-            const unit = label.toLowerCase().includes('latency') ? ' ms' : ' Mb/s';
-            return `${label}: ${val.toFixed(2)}${unit}`;
-          },
-        },
-      },
-    },
-    scales: {
-      x: { grid: { display: false }, ticks: { color: '#94a3b8', maxTicksLimit: 8, autoSkip: true } },
-      y: {
-        type: 'linear', position: 'left',
-        grid: { color: 'rgba(148,163,184,0.12)' },
-        ticks: { color: '#94a3b8' }, beginAtZero: true,
-        title: { display: true, text: 'Mb/s', color: '#94a3b8' },
-      },
-      y1: {
-        type: 'linear', position: 'right',
-        grid: { drawOnChartArea: false },
-        ticks: { color: '#64748b' }, beginAtZero: true,
-        title: { display: true, text: 'Latency (ms)', color: '#64748b' },
-      },
-    },
-  };
+  // ===== Chart options for the speed cards =====
+  // The left Y axis (speed) is color-coded per card (blue for DL, red for UL),
+  // and the right Y axis (loaded latency) is always dark gray.
+  readonly chartDlOptions = this.buildDualOptions(COLOR_DL, COLOR_LAT);
+  readonly chartUlOptions = this.buildDualOptions(COLOR_UL, COLOR_LAT);
 
   // Chart options for the latency card: single Y axis (ms)
   readonly chartOptions = {
@@ -364,6 +351,51 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
     });
   }
 
+  // ================= Chart builders =================
+  // Builds a shared chart-options object where axis tick colors match the units.
+  // speedColor -> left Y axis (Mb/s), latColor -> right Y axis (Latency ms).
+  private buildDualOptions(speedColor: string, latColor: string) {
+    return {
+      maintainAspectRatio: false,
+      animation: { duration: 250 },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, labels: { color: '#94a3b8', usePointStyle: true } },
+        tooltip: {
+          enabled: true,
+          callbacks: {
+            label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) => {
+              const label = ctx.dataset.label ?? '';
+              const val = ctx.parsed.y;
+              if (val === null || val === undefined) return `${label}: --`;
+              const unit = label.toLowerCase().includes('latency') ? ' ms' : ' Mb/s';
+              return `${label}: ${val.toFixed(2)}${unit}`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#94a3b8', maxTicksLimit: 8, autoSkip: true } },
+        y: {
+          type: 'linear', position: 'left',
+          grid: { color: 'rgba(148,163,184,0.12)' },
+          // Color-coded to the speed unit (blue for DL, red for UL)
+          ticks: { color: speedColor },
+          beginAtZero: true,
+          title: { display: true, text: 'Mb/s', color: speedColor },
+        },
+        y1: {
+          type: 'linear', position: 'right',
+          grid: { drawOnChartArea: false },
+          // Color-coded to the loaded-latency unit (dark gray)
+          ticks: { color: latColor },
+          beginAtZero: true,
+          title: { display: true, text: 'Latency (ms)', color: latColor },
+        },
+      },
+    };
+  }
+
   // Speed chart with a second line for loaded latency (thin dark gray, no fill)
   private buildDualChart(h: DualSample[], color: string) {
     return {
@@ -385,13 +417,13 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
         {
           label: 'Loaded latency',
           data: h.map((s) => s.lat),
-          borderColor: '#4b5563',
+          borderColor: COLOR_LAT,
           backgroundColor: 'transparent',
           fill: false,
           tension: 0.3,
           pointRadius: 3,
           pointHoverRadius: 6,
-          pointBackgroundColor: '#4b5563',
+          pointBackgroundColor: COLOR_LAT,
           borderWidth: 1.5,
           spanGaps: true,
           yAxisID: 'y1',
@@ -419,7 +451,7 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
     };
   }
 
-  // ================= Stats helpers =================
+  // ================= Stats helpers (speed) =================
   private avg(h: { v: number }[]): number {
     return h.length ? h.reduce((a, b) => a + b.v, 0) / h.length : 0;
   }
@@ -434,6 +466,29 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
   }
   private min(h: { v: number }[]): number {
     return h.length ? Math.min(...h.map((s) => s.v)) : 0;
+  }
+
+  // ================= Stats helpers (loaded latency) =================
+  // Extract only valid (non-null, > 0) loaded-latency values from a DualSample list.
+  private latValues(h: DualSample[]): number[] {
+    return h.map((s) => s.lat).filter((v): v is number => v !== null && v > 0);
+  }
+  private latMin(h: DualSample[]): number {
+    const v = this.latValues(h);
+    return v.length ? Math.min(...v) : 0;
+  }
+  private latAvg(h: DualSample[]): number {
+    const v = this.latValues(h);
+    return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0;
+  }
+  private latMax(h: DualSample[]): number {
+    const v = this.latValues(h);
+    return v.length ? Math.max(...v) : 0;
+  }
+  // Jitter = spread of the loaded latency (max - min)
+  private latJitter(h: DualSample[]): number {
+    const v = this.latValues(h);
+    return v.length < 2 ? 0 : Math.max(...v) - Math.min(...v);
   }
 
   // ================= Format helpers =================
@@ -454,6 +509,10 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
   }
   fmtNum(n: number): string {
     return n < 10 ? n.toFixed(2) : n < 100 ? n.toFixed(1) : n.toFixed(0);
+  }
+  // Formats a latency value; shows "--" when there is no data yet
+  fmtLat(n: number): string {
+    return n > 0 ? n.toFixed(1) : '--';
   }
   private fmtClock(ts: number): string {
     const d = new Date(ts);

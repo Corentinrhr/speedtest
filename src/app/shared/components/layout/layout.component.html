@@ -8,14 +8,15 @@
         class="sidebar-logo"
         [class.hidden]="sidebarCollapsed()"
       />
-      <p-button
-        [icon]="sidebarCollapsed() ? 'pi pi-angle-right' : 'pi pi-angle-left'"
-        [rounded]="true"
-        [text]="true"
-        severity="secondary"
-        (onClick)="toggleSidebar()"
-        styleClass="toggle-btn"
-      />
+      <button
+        type="button"
+        class="toggle-btn"
+        (click)="toggleSidebar()"
+        [attr.aria-label]="sidebarCollapsed() ? 'Expand menu' : 'Collapse menu'"
+        title="Toggle menu"
+      >
+        <i class="pi" [ngClass]="sidebarCollapsed() ? 'pi-bars' : 'pi-angle-left'"></i>
+      </button>
     </div>
 
     <nav class="sidebar-nav">

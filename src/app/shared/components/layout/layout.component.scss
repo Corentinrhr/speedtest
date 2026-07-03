@@ -11,9 +11,10 @@
 }
 
 // ─── Sidebar ───
+// Reduced width to leave more room for the Speedtest window.
 .sidebar {
-  width: 260px;
-  min-width: 260px;
+  width: 220px;          // was 260px -> slimmer
+  min-width: 220px;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -23,23 +24,66 @@
   overflow: hidden;
 }
 
+// Collapsed state: only icons remain visible.
 .sidebar-collapsed .sidebar {
-  width: 64px;
-  min-width: 64px;
+  width: 60px;           // was 64px -> slightly tighter
+  min-width: 60px;
 }
 
 .sidebar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.25rem 1rem;
+  padding: 1.25rem 0.85rem;
   border-bottom: 1px solid var(--surface-border);
-  min-height: 64px;
+  min-height: 60px;
+}
+
+// Center the toggle button when the sidebar is collapsed (no logo shown).
+.sidebar-collapsed .sidebar-header {
+  justify-content: center;
+  padding: 1.25rem 0;
 }
 
 .sidebar-logo {
-  height: 28px;
+  height: 26px;
   transition: opacity 0.2s;
+}
+
+// ─── Toggle (hamburger) button ───
+.toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+
+  // Visible icon color, independent from the PrimeNG theme.
+  i {
+    font-size: 1.2rem;
+    color: var(--text-color-secondary);
+    transition: color 0.15s ease;
+  }
+
+  &:hover {
+    background: var(--surface-hover);
+
+    i {
+      color: var(--text-color);
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+  }
 }
 
 .sidebar-nav {
@@ -54,10 +98,10 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.75rem 1rem;
+  padding: 0.7rem 0.85rem;
   border-radius: 8px;
   color: var(--text-color-secondary);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 500;
   text-decoration: none;
   transition: background 0.15s, color 0.15s;
@@ -65,7 +109,7 @@
   cursor: pointer;
 
   i {
-    font-size: 1.15rem;
+    font-size: 1.1rem;
     width: 20px;
     text-align: center;
     flex-shrink: 0;
@@ -86,6 +130,12 @@
   }
 }
 
+// When collapsed, center the icons inside each nav item.
+.sidebar-collapsed .nav-item {
+  justify-content: center;
+  padding: 0.7rem 0;
+}
+
 .nav-label {
   transition: opacity 0.2s;
 }
@@ -98,11 +148,12 @@
 }
 
 .version-tag {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--text-color-secondary);
   opacity: 0.6;
 }
 
+// Utility to hide labels/logo/footer when the sidebar is collapsed.
 .hidden {
   opacity: 0;
   pointer-events: none;
@@ -121,8 +172,8 @@
 // ─── Responsive ───
 @media screen and (max-width: 768px) {
   .sidebar {
-    width: 64px;
-    min-width: 64px;
+    width: 60px;
+    min-width: 60px;
   }
 
   .nav-label,
@@ -132,6 +183,11 @@
     pointer-events: none;
     width: 0;
     overflow: hidden;
+  }
+
+  .nav-item {
+    justify-content: center;
+    padding: 0.7rem 0;
   }
 
   .main-content {

@@ -1,5 +1,5 @@
 /*
-	LibreSpeed - Worker (modifie : latence sous charge DL/UL)
+	LibreSpeed - Worker (modify: DL/UL latency under load + instantaneous latency)
 	by Federico Dossena
 	https://github.com/librespeed/speedtest/
 	GNU LGPLv3 License
@@ -16,12 +16,13 @@ let dlProgress = 0;
 let ulProgress = 0;
 let pingProgress = 0;
 let testId = null;
-
-// >>> MODIF : latence sous charge <<<
-let dlLoadedPing = "";   // ping moyen mesure PENDANT le test de download
+let dlLoadedPing = "";
 let dlLoadedJitter = "";
-let ulLoadedPing = "";   // ping moyen mesure PENDANT le test d'upload
+let ulLoadedPing = "";
 let ulLoadedJitter = "";
+let dlLoadedPingInst = "";
+let ulLoadedPingInst = "";
+let pingInst = "";
 
 let log = "";
 function tlog(s) {
@@ -72,9 +73,8 @@ let settings = {
 	url_telemetry: "results/telemetry.php",
 	telemetry_extra: "",
 	forceIE11Workaround: false,
-	// >>> MODIF <<<
-	loadedLatency: true,          // active la mesure de latence sous charge
-	loadedLatency_interval: 100   // ms minimum entre deux pings de fond
+	loadedLatency: true,
+	loadedLatency_interval: 100 
 };
 
 let xhr = null;
@@ -85,14 +85,13 @@ function url_sep(url) {
 	return url.match(/\?/) ? "&" : "?";
 }
 
-/* ============================================================
-   MODIF : Pinger de fond independant.
-   Lance des pings en boucle sur url_ping et alimente une cible
-   (dl ou ul) pendant que le test de debit tourne en parallele.
-   ============================================================ */
+/*
+   MOD: Independent background pinger.
+   This pinger runs in parallel with the DL or UL test and measures the latency under load.
+*/
 let bgPinger = {
 	running: false,
-	target: null,   // "dl" ou "ul"
+	target: null,   // "dl" or "ul"
 	xhr: null,
 	prevInstspd: 0,
 	count: 0,
@@ -106,6 +105,8 @@ let bgPinger = {
 		this.count = 0;
 		this.ping = 0;
 		this.jitter = 0;
+		if (target === "dl") dlLoadedPingInst = "";
+		else if (target === "ul") ulLoadedPingInst = "";
 		this._loop();
 	},
 
@@ -117,11 +118,19 @@ let bgPinger = {
 		}
 	},
 
-	_commit: function() {
+	_commit: function(instspd) {
 		const p = this.ping.toFixed(2);
 		const j = this.jitter.toFixed(2);
-		if (this.target === "dl") { dlLoadedPing = p; dlLoadedJitter = j; }
-		else if (this.target === "ul") { ulLoadedPing = p; ulLoadedJitter = j; }
+		const inst = instspd.toFixed(2);
+		if (this.target === "dl") {
+			dlLoadedPing = p;
+			dlLoadedJitter = j;
+			dlLoadedPingInst = inst;
+		} else if (this.target === "ul") {
+			ulLoadedPing = p;
+			ulLoadedJitter = j;
+			ulLoadedPingInst = inst;
+		}
 	},
 
 	_loop: function() {
@@ -155,9 +164,8 @@ let bgPinger = {
 			}
 			this.prevInstspd = instspd;
 			this.count++;
-			this._commit();
+			this._commit(instspd);
 
-			// pace les pings de fond
 			const rtt = new Date().getTime() - prevT;
 			const delay = Math.max(0, settings.loadedLatency_interval - rtt);
 			setTimeout(this._loop.bind(this), delay);
@@ -191,11 +199,13 @@ this.addEventListener("message", function(e) {
 				ulProgress: ulProgress,
 				pingProgress: pingProgress,
 				testId: testId,
-				// >>> MODIF <<<
 				dlLoadedPing: dlLoadedPing,
 				dlLoadedJitter: dlLoadedJitter,
 				ulLoadedPing: ulLoadedPing,
-				ulLoadedJitter: ulLoadedJitter
+				ulLoadedJitter: ulLoadedJitter,
+				dlLoadedPingInst: dlLoadedPingInst,
+				ulLoadedPingInst: ulLoadedPingInst,
+				pingInst: pingInst
 			})
 		);
 	}
@@ -275,7 +285,6 @@ this.addEventListener("message", function(e) {
 						test_pointer++;
 						if (dRun) { runNextTest(); return; } else dRun = true;
 						testState = 1;
-						// >>> MODIF : lance le ping de fond en parallele du DL <<<
 						if (settings.loadedLatency) bgPinger.start("dl");
 						dlTest(function() {
 							if (settings.loadedLatency) bgPinger.stop();
@@ -288,7 +297,6 @@ this.addEventListener("message", function(e) {
 						test_pointer++;
 						if (uRun) { runNextTest(); return; } else uRun = true;
 						testState = 3;
-						// >>> MODIF : lance le ping de fond en parallele de l'UL <<<
 						if (settings.loadedLatency) bgPinger.start("ul");
 						ulTest(function() {
 							if (settings.loadedLatency) bgPinger.stop();
@@ -319,7 +327,7 @@ this.addEventListener("message", function(e) {
 	if (params[0] === "abort") {
 		if (testState >= 4) return;
 		tlog("manually aborted");
-		bgPinger.stop(); // >>> MODIF <<<
+		bgPinger.stop();
 		clearRequests();
 		runNextTest = null;
 		if (interval) clearInterval(interval);
@@ -337,6 +345,9 @@ this.addEventListener("message", function(e) {
 		dlLoadedJitter = "";
 		ulLoadedPing = "";
 		ulLoadedJitter = "";
+		dlLoadedPingInst = "";
+		ulLoadedPingInst = "";
+		pingInst = "";
 	}
 });
 
@@ -664,6 +675,7 @@ function pingTest(done) {
 					else jitter = instjitter > jitter ? jitter * 0.3 + instjitter * 0.7 : jitter * 0.8 + instjitter * 0.2;
 				}
 				prevInstspd = instspd;
+				pingInst = instspd.toFixed(2);
 			}
 			pingStatus = ping.toFixed(2);
 			jitterStatus = jitter.toFixed(2);

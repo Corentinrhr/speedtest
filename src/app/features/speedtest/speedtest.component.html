@@ -42,7 +42,8 @@
   }
 
   <!-- Two columns: small Latency (left) + stacked DL/UL (right) -->
-  <div class="results-columns">
+  <!-- no-latency collapses the grid to a single column when idle latency is off -->
+  <div class="results-columns" [class.no-latency]="!testPing()">
     <!-- Left column: Latency (compact) -->
     @if (testPing()) {
       <div class="col-latency">
@@ -82,16 +83,17 @@
               </div>
 
               @if (showResults()) {
-                <div class="gauge-stats compact-stats">
-                  <div><span>Min :</span> {{ fmtNum(minPing()) }} ms</div>
-                  <div><span>Average :</span> {{ fmtNum(avgPing()) }} ms</div>
-                  <div><span>Median :</span> {{ fmtNum(medianPing()) }} ms</div>
-                  <div><span>Max :</span> {{ fmtNum(maxPing()) }} ms</div>
-                  <div class="loaded-line"><span>Jitter :</span> {{ jitter() }} ms</div>
-                </div>
-
                 <div class="compact-chart">
                   <p-chart type="line" [data]="chartPingData()" [options]="chartOptions" height="180px" />
+                </div>
+
+                <!-- KPI boxes for idle latency (min, average, median, max, jitter) -->
+                <div class="kpi-grid kpi-ping">
+                  <div class="kpi-box"><span class="kpi-label">Min</span><span class="kpi-val">{{ fmtNum(minPing()) }}<small>ms</small></span></div>
+                  <div class="kpi-box"><span class="kpi-label">Average</span><span class="kpi-val">{{ fmtNum(avgPing()) }}<small>ms</small></span></div>
+                  <div class="kpi-box"><span class="kpi-label">Median</span><span class="kpi-val">{{ fmtNum(medianPing()) }}<small>ms</small></span></div>
+                  <div class="kpi-box"><span class="kpi-label">Max</span><span class="kpi-val">{{ fmtNum(maxPing()) }}<small>ms</small></span></div>
+                  <div class="kpi-box"><span class="kpi-label">Jitter</span><span class="kpi-val">{{ jitter() }}<small>ms</small></span></div>
                 </div>
               }
             </div>
@@ -111,54 +113,58 @@
               <span>Download Speed</span>
             </div>
             <div class="card-head-right">
-              @if (showResults()) {
-                <span class="head-badge">{{ dlLoadedPing() }} ms</span>
-              }
+              <!-- Latency badge removed as requested -->
               <i class="pi" [ngClass]="collapsedDl() ? 'pi-chevron-down' : 'pi-chevron-up'"></i>
             </div>
           </div>
 
           @if (!collapsedDl()) {
-            <div class="main-grid">
-              <div class="gauge-panel">
-                <div class="gauge-percent">{{ dlProgress() }}%</div>
-                <div class="gauge-percent-label">Completed</div>
+            <div class="card-body">
+              <div class="main-grid">
+                <div class="gauge-panel">
+                  <div class="gauge-percent">{{ dlProgress() }}%</div>
+                  <div class="gauge-percent-label">Completed</div>
 
-                <div class="gauge-svg-wrap">
-                  <svg viewBox="0 0 220 200" class="gauge-svg">
-                    <defs>
-                      <linearGradient id="gradDl" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stop-color="#4f46e5" />
-                        <stop offset="100%" stop-color="#7c3aed" />
-                      </linearGradient>
-                    </defs>
-                    <path [attr.d]="gaugeBgPath()" class="gauge-arc-bg" />
-                    <path [attr.d]="gaugeDlPath()" class="gauge-arc-value grad-dl" />
-                    @for (tick of speedTickMarks(); track tick.val) {
-                      <line [attr.x1]="tick.x1" [attr.y1]="tick.y1"
-                            [attr.x2]="tick.x2" [attr.y2]="tick.y2" class="gauge-tick" />
-                      <text [attr.x]="tick.lx" [attr.y]="tick.ly" class="gauge-tick-label"
-                            text-anchor="middle" dominant-baseline="middle">{{ tick.val }}</text>
-                    }
-                    <text x="110" y="118" class="gauge-center-val" text-anchor="middle">{{ fmtNum(currentDl()) }}</text>
-                    <text x="110" y="136" class="gauge-center-unit" text-anchor="middle">Mb/s</text>
-                  </svg>
+                  <div class="gauge-svg-wrap">
+                    <svg viewBox="0 0 220 200" class="gauge-svg">
+                      <defs>
+                        <linearGradient id="gradDl" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stop-color="#4f46e5" />
+                          <stop offset="100%" stop-color="#7c3aed" />
+                        </linearGradient>
+                      </defs>
+                      <path [attr.d]="gaugeBgPath()" class="gauge-arc-bg" />
+                      <path [attr.d]="gaugeDlPath()" class="gauge-arc-value grad-dl" />
+                      @for (tick of speedTickMarks(); track tick.val) {
+                        <line [attr.x1]="tick.x1" [attr.y1]="tick.y1"
+                              [attr.x2]="tick.x2" [attr.y2]="tick.y2" class="gauge-tick" />
+                        <text [attr.x]="tick.lx" [attr.y]="tick.ly" class="gauge-tick-label"
+                              text-anchor="middle" dominant-baseline="middle">{{ tick.val }}</text>
+                      }
+                      <text x="110" y="118" class="gauge-center-val" text-anchor="middle">{{ fmtNum(currentDl()) }}</text>
+                      <text x="110" y="136" class="gauge-center-unit" text-anchor="middle">Mb/s</text>
+                    </svg>
+                  </div>
                 </div>
 
-                @if (showResults()) {
-                  <div class="gauge-stats">
-                    <div><span>Min :</span> {{ fmtNum(minDl()) }} Mb/s</div>
-                    <div><span>Average :</span> {{ fmtNum(avgDl()) }} Mb/s</div>
-                    <div><span>Median :</span> {{ fmtNum(medianDl()) }} Mb/s</div>
-                    <div><span>Max :</span> {{ fmtNum(maxDl()) }} Mb/s</div>
-                    <div class="loaded-line"><span>Loaded ping :</span> {{ dlLoadedPing() }} ms</div>
-                  </div>
-                }
+                <div class="chart-panel">
+                  <p-chart type="line" [data]="chartDlData()" [options]="chartDlOptions" height="380px" />
+                </div>
               </div>
 
-              <div class="chart-panel">
-                <p-chart type="line" [data]="chartDlData()" [options]="chartDualOptions" height="380px" />
-              </div>
+              <!-- KPI boxes below gauge + chart, spanning the full card width -->
+              @if (showResults()) {
+                <div class="kpi-grid">
+                  <div class="kpi-box dl"><span class="kpi-label">DL Min</span><span class="kpi-val">{{ fmtNum(minDl()) }}<small>Mb/s</small></span></div>
+                  <div class="kpi-box dl"><span class="kpi-label">DL Average</span><span class="kpi-val">{{ fmtNum(avgDl()) }}<small>Mb/s</small></span></div>
+                  <div class="kpi-box dl"><span class="kpi-label">DL Median</span><span class="kpi-val">{{ fmtNum(medianDl()) }}<small>Mb/s</small></span></div>
+                  <div class="kpi-box dl"><span class="kpi-label">DL Max</span><span class="kpi-val">{{ fmtNum(maxDl()) }}<small>Mb/s</small></span></div>
+                  <div class="kpi-box lat"><span class="kpi-label">Loaded Min</span><span class="kpi-val">{{ fmtLat(dlLatMin()) }}<small>ms</small></span></div>
+                  <div class="kpi-box lat"><span class="kpi-label">Loaded Average</span><span class="kpi-val">{{ fmtLat(dlLatAvg()) }}<small>ms</small></span></div>
+                  <div class="kpi-box lat"><span class="kpi-label">Loaded Max</span><span class="kpi-val">{{ fmtLat(dlLatMax()) }}<small>ms</small></span></div>
+                  <div class="kpi-box lat"><span class="kpi-label">Loaded Jitter</span><span class="kpi-val">{{ fmtLat(dlLatJitter()) }}<small>ms</small></span></div>
+                </div>
+              }
             </div>
           }
         </p-card>
@@ -173,54 +179,58 @@
               <span>Upload Speed</span>
             </div>
             <div class="card-head-right">
-              @if (showResults()) {
-                <span class="head-badge">{{ ulLoadedPing() }} ms</span>
-              }
+              <!-- Latency badge removed as requested -->
               <i class="pi" [ngClass]="collapsedUl() ? 'pi-chevron-down' : 'pi-chevron-up'"></i>
             </div>
           </div>
 
           @if (!collapsedUl()) {
-            <div class="main-grid">
-              <div class="gauge-panel">
-                <div class="gauge-percent">{{ ulProgress() }}%</div>
-                <div class="gauge-percent-label">Completed</div>
+            <div class="card-body">
+              <div class="main-grid">
+                <div class="gauge-panel">
+                  <div class="gauge-percent">{{ ulProgress() }}%</div>
+                  <div class="gauge-percent-label">Completed</div>
 
-                <div class="gauge-svg-wrap">
-                  <svg viewBox="0 0 220 200" class="gauge-svg">
-                    <defs>
-                      <linearGradient id="gradUl" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stop-color="#f5576c" />
-                        <stop offset="100%" stop-color="#f093fb" />
-                      </linearGradient>
-                    </defs>
-                    <path [attr.d]="gaugeBgPath()" class="gauge-arc-bg" />
-                    <path [attr.d]="gaugeUlPath()" class="gauge-arc-value grad-ul" />
-                    @for (tick of speedTickMarks(); track tick.val) {
-                      <line [attr.x1]="tick.x1" [attr.y1]="tick.y1"
-                            [attr.x2]="tick.x2" [attr.y2]="tick.y2" class="gauge-tick" />
-                      <text [attr.x]="tick.lx" [attr.y]="tick.ly" class="gauge-tick-label"
-                            text-anchor="middle" dominant-baseline="middle">{{ tick.val }}</text>
-                    }
-                    <text x="110" y="118" class="gauge-center-val" text-anchor="middle">{{ fmtNum(currentUl()) }}</text>
-                    <text x="110" y="136" class="gauge-center-unit" text-anchor="middle">Mb/s</text>
-                  </svg>
+                  <div class="gauge-svg-wrap">
+                    <svg viewBox="0 0 220 200" class="gauge-svg">
+                      <defs>
+                        <linearGradient id="gradUl" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stop-color="#f5576c" />
+                          <stop offset="100%" stop-color="#f093fb" />
+                        </linearGradient>
+                      </defs>
+                      <path [attr.d]="gaugeBgPath()" class="gauge-arc-bg" />
+                      <path [attr.d]="gaugeUlPath()" class="gauge-arc-value grad-ul" />
+                      @for (tick of speedTickMarks(); track tick.val) {
+                        <line [attr.x1]="tick.x1" [attr.y1]="tick.y1"
+                              [attr.x2]="tick.x2" [attr.y2]="tick.y2" class="gauge-tick" />
+                        <text [attr.x]="tick.lx" [attr.y]="tick.ly" class="gauge-tick-label"
+                              text-anchor="middle" dominant-baseline="middle">{{ tick.val }}</text>
+                      }
+                      <text x="110" y="118" class="gauge-center-val" text-anchor="middle">{{ fmtNum(currentUl()) }}</text>
+                      <text x="110" y="136" class="gauge-center-unit" text-anchor="middle">Mb/s</text>
+                    </svg>
+                  </div>
                 </div>
 
-                @if (showResults()) {
-                  <div class="gauge-stats">
-                    <div><span>Min :</span> {{ fmtNum(minUl()) }} Mb/s</div>
-                    <div><span>Average :</span> {{ fmtNum(avgUl()) }} Mb/s</div>
-                    <div><span>Median :</span> {{ fmtNum(medianUl()) }} Mb/s</div>
-                    <div><span>Max :</span> {{ fmtNum(maxUl()) }} Mb/s</div>
-                    <div class="loaded-line"><span>Loaded ping :</span> {{ ulLoadedPing() }} ms</div>
-                  </div>
-                }
+                <div class="chart-panel">
+                  <p-chart type="line" [data]="chartUlData()" [options]="chartUlOptions" height="380px" />
+                </div>
               </div>
 
-              <div class="chart-panel">
-                <p-chart type="line" [data]="chartUlData()" [options]="chartDualOptions" height="380px" />
-              </div>
+              <!-- KPI boxes below gauge + chart, spanning the full card width -->
+              @if (showResults()) {
+                <div class="kpi-grid">
+                  <div class="kpi-box ul"><span class="kpi-label">UL Min</span><span class="kpi-val">{{ fmtNum(minUl()) }}<small>Mb/s</small></span></div>
+                  <div class="kpi-box ul"><span class="kpi-label">UL Average</span><span class="kpi-val">{{ fmtNum(avgUl()) }}<small>Mb/s</small></span></div>
+                  <div class="kpi-box ul"><span class="kpi-label">UL Median</span><span class="kpi-val">{{ fmtNum(medianUl()) }}<small>Mb/s</small></span></div>
+                  <div class="kpi-box ul"><span class="kpi-label">UL Max</span><span class="kpi-val">{{ fmtNum(maxUl()) }}<small>Mb/s</small></span></div>
+                  <div class="kpi-box lat"><span class="kpi-label">Loaded Min</span><span class="kpi-val">{{ fmtLat(ulLatMin()) }}<small>ms</small></span></div>
+                  <div class="kpi-box lat"><span class="kpi-label">Loaded Average</span><span class="kpi-val">{{ fmtLat(ulLatAvg()) }}<small>ms</small></span></div>
+                  <div class="kpi-box lat"><span class="kpi-label">Loaded Max</span><span class="kpi-val">{{ fmtLat(ulLatMax()) }}<small>ms</small></span></div>
+                  <div class="kpi-box lat"><span class="kpi-label">Loaded Jitter</span><span class="kpi-val">{{ fmtLat(ulLatJitter()) }}<small>ms</small></span></div>
+                </div>
+              }
             </div>
           }
         </p-card>

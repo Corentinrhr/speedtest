@@ -1,5 +1,5 @@
 /*
-	LibreSpeed - Worker (MOD: DL/UL latency under load + instantaneous latency + packet loss)
+	LibreSpeed - Worker (MOD: DL/UL latency under load + instantaneous latency + packet loss + IDLE packet loss)
 	by Federico Dossena
 	https://github.com/librespeed/speedtest/
 	GNU LGPLv3 License
@@ -28,6 +28,9 @@ let dlPacketLoss = "";   // percentage 0-100 as string
 let ulPacketLoss = "";   // percentage 0-100 as string
 let dlLostInst = false;  // true for one status cycle when a DL ping was just lost
 let ulLostInst = false;  // true for one status cycle when a UL ping was just lost
+// >>> MOD: IDLE packet loss (during pingTest) <<<
+let pingPacketLoss = ""; // percentage 0-100 as string
+let pingLostInst = false;// true for one status cycle when an idle ping was just lost
 
 let log = "";
 function tlog(s) {
@@ -80,8 +83,9 @@ let settings = {
 	forceIE11Workaround: false,
 	loadedLatency: true,
 	loadedLatency_interval: 100,
-	// >>> MOD: timeout above which a loaded-latency ping is counted as lost <<<
-	loadedLatency_timeout: 2000
+	loadedLatency_timeout: 2000,
+	// >>> MOD: timeout above which an idle ping is counted as lost <<<
+	idlePing_timeout: 2000
 };
 
 let xhr = null;
@@ -93,19 +97,17 @@ function url_sep(url) {
 }
 
 /*
-   MOD: Independent background pinger.
-   This pinger runs in parallel with the DL or UL test and measures the latency under load.
-   It also counts packet loss: a network error OR a request taking more than
-   loadedLatency_timeout ms is counted as a lost packet.
+   MOD: Independent background pinger (loaded latency for DL/UL).
+   Also counts packet loss under load.
 */
 let bgPinger = {
 	running: false,
-	target: null,   // "dl" or "ul"
+	target: null,
 	xhr: null,
 	prevInstspd: 0,
-	count: 0,       // number of successful pings
-	sent: 0,        // total number of requests (success + lost)
-	lost: 0,        // number of lost packets
+	count: 0,
+	sent: 0,
+	lost: 0,
 	ping: 0,
 	jitter: 0,
 
@@ -173,7 +175,6 @@ let bgPinger = {
 		}
 	},
 
-	// Called when a ping fails (network error or timeout).
 	_onLost: function() {
 		if (!this.running) return;
 		this.sent++;
@@ -188,8 +189,6 @@ let bgPinger = {
 		const prevT = new Date().getTime();
 		let settled = false;
 
-		// Manual timeout: if the request takes more than loadedLatency_timeout,
-		// count it as a lost packet and move on.
 		const timeoutTimer = setTimeout(function() {
 			if (settled || !this.running) return;
 			settled = true;
@@ -275,13 +274,18 @@ this.addEventListener("message", function(e) {
 				dlLoadedPingInst: dlLoadedPingInst,
 				ulLoadedPingInst: ulLoadedPingInst,
 				pingInst: pingInst,
-				// >>> MOD: packet loss <<<
 				dlPacketLoss: dlPacketLoss,
 				ulPacketLoss: ulPacketLoss,
 				dlLostInst: dlLostInst,
-				ulLostInst: ulLostInst
+				ulLostInst: ulLostInst,
+				// >>> MOD: idle packet loss <<<
+				pingPacketLoss: pingPacketLoss,
+				pingLostInst: pingLostInst
 			})
 		);
+		// Reset the one-shot "lost" flag AFTER it has been reported once,
+		// so the main thread doesn't count the same loss multiple times.
+		pingLostInst = false;
 	}
 	if (params[0] === "start" && testState === -1) {
 		testState = 0;
@@ -426,6 +430,9 @@ this.addEventListener("message", function(e) {
 		ulPacketLoss = "";
 		dlLostInst = false;
 		ulLostInst = false;
+		// >>> MOD: reset idle packet loss <<<
+		pingPacketLoss = "";
+		pingLostInst = false;
 	}
 });
 
@@ -720,13 +727,53 @@ function pingTest(done) {
 	let jitter = 0.0;
 	let i = 0;
 	let prevInstspd = 0;
+
+	// >>> MOD: idle packet loss counters <<<
+	let sent = 0;
+	let lost = 0;
+
 	xhr = [];
+
+	// Commit the current loss percentage into the shared pingPacketLoss field.
+	const commitLoss = function() {
+		pingPacketLoss = sent > 0
+			? ((lost / sent) * 100).toFixed(2)
+			: "0.00";
+	};
+
 	const doPing = function() {
 		tverb("ping");
 		pingProgress = i / settings.count_ping;
 		prevT = new Date().getTime();
+
+		let settled = false;
+
+		// >>> MOD: manual timeout to detect a lost idle ping <<<
+		const timeoutTimer = setTimeout(function() {
+			if (settled) return;
+			settled = true;
+			try { if (xhr[0]) xhr[0].abort(); } catch (e) {}
+
+			sent++;
+			lost++;
+			commitLoss();
+			pingLostInst = true;   // one-shot flag: the main thread will read it once
+			prevInstspd = 0;
+			i++;
+			if (i < settings.count_ping) doPing();
+			else {
+				pingProgress = 1;
+				tlog("ping: " + pingStatus + " jitter: " + jitterStatus +
+					" loss: " + pingPacketLoss + "%, took " + (new Date().getTime() - startT) + "ms");
+				done();
+			}
+		}, settings.idlePing_timeout);
+
 		xhr[0] = new XMLHttpRequest();
 		xhr[0].onload = function() {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timeoutTimer);
 			tverb("pong");
 			if (i === 0) {
 				prevT = new Date().getTime();
@@ -757,17 +804,32 @@ function pingTest(done) {
 			}
 			pingStatus = ping.toFixed(2);
 			jitterStatus = jitter.toFixed(2);
+			sent++;
+			commitLoss();
 			i++;
-			tverb("ping: " + pingStatus + " jitter: " + jitterStatus);
+			tverb("ping: " + pingStatus + " jitter: " + jitterStatus + " loss: " + pingPacketLoss + "%");
 			if (i < settings.count_ping) doPing();
 			else {
 				pingProgress = 1;
-				tlog("ping: " + pingStatus + " jitter: " + jitterStatus + ", took " + (new Date().getTime() - startT) + "ms");
+				tlog("ping: " + pingStatus + " jitter: " + jitterStatus +
+					" loss: " + pingPacketLoss + "%, took " + (new Date().getTime() - startT) + "ms");
 				done();
 			}
 		}.bind(this);
+
 		xhr[0].onerror = function() {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timeoutTimer);
 			tverb("ping failed");
+
+			// >>> MOD: network error = lost packet, whatever xhr_ignoreErrors is <<<
+			sent++;
+			lost++;
+			commitLoss();
+			pingLostInst = true;
+			prevInstspd = 0;
+
 			if (settings.xhr_ignoreErrors === 0) {
 				pingStatus = "Fail";
 				jitterStatus = "Fail";
@@ -775,18 +837,18 @@ function pingTest(done) {
 				tlog("ping test failed, took " + (new Date().getTime() - startT) + "ms");
 				pingProgress = 1;
 				done();
+				return;
 			}
-			if (settings.xhr_ignoreErrors === 1) doPing();
-			if (settings.xhr_ignoreErrors === 2) {
-				i++;
-				if (i < settings.count_ping) doPing();
-				else {
-					pingProgress = 1;
-					tlog("ping: " + pingStatus + " jitter: " + jitterStatus + ", took " + (new Date().getTime() - startT) + "ms");
-					done();
-				}
+			i++;
+			if (i < settings.count_ping) doPing();
+			else {
+				pingProgress = 1;
+				tlog("ping: " + pingStatus + " jitter: " + jitterStatus +
+					" loss: " + pingPacketLoss + "%, took " + (new Date().getTime() - startT) + "ms");
+				done();
 			}
 		}.bind(this);
+
 		xhr[0].open("GET", settings.url_ping + url_sep(settings.url_ping) + (settings.mpot ? "cors=true&" : "") + "r=" + Math.random(), true);
 		xhr[0].send();
 	}.bind(this);

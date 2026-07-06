@@ -19,26 +19,23 @@ export class FinalResultsComponent {
   readonly ping = input<ResultMetric>({ avg: 0, median: 0 });
   readonly jitter = input<ResultMetric>({ avg: 0, median: 0 });
 
-  // Packet loss percentages for DL and UL (default 0).
+  // Packet loss percentages: idle (ping), download, upload.
   readonly downloadLoss = input<number>(0);
   readonly uploadLoss = input<number>(0);
+  readonly idleLoss = input<number>(0);
 
-  // Timestamp of when the test finished (defaults to "now" if not provided).
   readonly testDate = input<Date>(new Date());
 
-  // Format helper: "--" when no data.
   fmt(n: number | undefined | null): string {
     if (n === undefined || n === null || isNaN(n) || n <= 0) return '--';
     return n < 10 ? n.toFixed(2) : n < 100 ? n.toFixed(1) : n.toFixed(0);
   }
 
-  // Packet loss formatter (always show, "0" included).
   fmtLoss(n: number | undefined | null): string {
     if (n === undefined || n === null || isNaN(n)) return '--';
     return n.toFixed(n < 10 ? 1 : 0);
   }
 
-  // Format the test date as "DD/MM/YYYY HH:mm:ss".
   fmtDate(d: Date | undefined | null): string {
     const dd = d ?? new Date();
     const p = (x: number) => String(x).padStart(2, '0');

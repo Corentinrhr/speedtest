@@ -28,6 +28,10 @@
           <div class="kpi-box"><span class="kpi-label">Median</span><span class="kpi-val">{{ fmtNum(stats().median) }}<small>ms</small></span></div>
           <div class="kpi-box"><span class="kpi-label">Max</span><span class="kpi-val">{{ fmtNum(stats().max) }}<small>ms</small></span></div>
           <div class="kpi-box"><span class="kpi-label">Jitter</span><span class="kpi-val">{{ stats().jitter }}<small>ms</small></span></div>
+          <div class="kpi-box loss" [class.has-loss]="hasLoss()">
+            <span class="kpi-label">Packet Loss</span>
+            <span class="kpi-val">{{ fmtLoss(stats().packetLoss) }}<small>%</small></span>
+          </div>
         </div>
       }
     </div>

@@ -87,12 +87,19 @@
       </div>
     </div>
 
-    <div class="fc-tile ls" [class.has-loss]="downloadLoss() > 0 || uploadLoss() > 0">
+    <div class="fc-tile ls" [class.has-loss]="idleLoss() > 0 || downloadLoss() > 0 || uploadLoss() > 0">
       <div class="fc-tile-head">
-        <span class="fc-icon-wrap"><i class="pi pi-times-circle"></i></span>
-        <span class="fc-title">Packet Loss <em>(loaded)</em></span>
+        <!-- Light grey square background around the icon -->
+        <span class="fc-icon-wrap loss-icon-wrap"><i class="pi pi-times-circle"></i></span>
+        <span class="fc-title">Packet Loss</span>
       </div>
       <div class="fc-stats">
+        <!-- Idle first, then Download, then Upload -->
+        <div class="fc-stat">
+          <span class="fc-stat-label">Idle</span>
+          <span class="fc-stat-val">{{ fmtLoss(idleLoss()) }}<small>%</small></span>
+        </div>
+        <div class="fc-divider"></div>
         <div class="fc-stat">
           <span class="fc-stat-label">Download</span>
           <span class="fc-stat-val">{{ fmtLoss(downloadLoss()) }}<small>%</small></span>

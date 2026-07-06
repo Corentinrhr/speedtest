@@ -8,7 +8,6 @@ import { SpeedtestService } from '@core/services/speedtest.service';
 import { ServerService } from '@core/services/server.service';
 import { SpeedtestSettings, TestState } from '@core/models/speedtest.model';
 import { SpeedtestServer } from '@core/models/server.model';
-import { ServerSelectorComponent } from '@shared/components/server-selector/server-selector.component';
 
 import { ActionBarComponent } from './components/action-bar/action-bar.component';
 import { LatencyCardComponent, PingStats } from './components/latency-card/latency-card.component';
@@ -30,7 +29,6 @@ type Phase = 'download' | 'upload' | 'ping';
   imports: [
     CommonModule,
     CardModule,
-    ServerSelectorComponent,
     ActionBarComponent,
     LatencyCardComponent,
     SpeedCardComponent,
@@ -52,8 +50,6 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
   readonly servers = this.serverService.servers;
   readonly selectedServer = this.serverService.selectedServer;
   readonly serversLoading = this.serverService.loading;
-
-  readonly showServerSelector = signal(false);
 
   readonly collapsedDl = signal(false);
   readonly collapsedUl = signal(false);
@@ -82,11 +78,19 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
   private lastDlLat: number | null = null;
   private lastUlLat: number | null = null;
 
+  // "pendingXxxLost" = one-shot flags coming from the worker.
+  // They are consumed the next time we push a sample to the corresponding history.
   private pendingDlLost = false;
   private pendingUlLost = false;
+  private pendingPingLost = false;
 
+  // Last known loss percentages (kept after test end for display).
   private lastDlLoss = 0;
   private lastUlLoss = 0;
+  private lastPingLoss = 0;
+
+  // Track pingInst changes to know when a new idle ping sample arrives.
+  private lastPingInst = '';
 
   readonly historyDl = this._historyDl.asReadonly();
   readonly historyUl = this._historyUl.asReadonly();
@@ -130,6 +134,7 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
   readonly ulProgress = computed(() => Math.round(this.data().ulProgress * 100));
   readonly pingProgress = computed(() => Math.round(this.data().pingProgress * 100));
 
+  // >>> Loss percentages are now READ directly from the worker (Solution A). <<<
   readonly dlLoss = computed(() => {
     const live = num(this.data().dlPacketLoss);
     return this.finished() ? this.lastDlLoss : live;
@@ -138,6 +143,11 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
   readonly ulLoss = computed(() => {
     const live = num(this.data().ulPacketLoss);
     return this.finished() ? this.lastUlLoss : live;
+  });
+
+  readonly idleLoss = computed(() => {
+    const live = num(this.data().pingPacketLoss);
+    return this.finished() ? this.lastPingLoss : live;
   });
 
   readonly dlStats = computed<SpeedStats>(() => ({
@@ -170,6 +180,7 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
     median: median(this._historyPing()),
     max: max(this._historyPing()),
     jitter: this.idleJitterSpread(),
+    packetLoss: this.idleLoss(),
   }));
 
   readonly downloadResult = computed<ResultMetric>(() => ({
@@ -204,6 +215,7 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
 
   readonly downloadLossResult = computed(() => this.dlLoss());
   readonly uploadLossResult = computed(() => this.ulLoss());
+  readonly idleLossResult = computed(() => this.idleLoss());
 
   private idleJitterDiffs(): number[] {
     const vals = this._historyPing().map((s) => s.v).filter((v) => v > 0);
@@ -225,12 +237,18 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
       const d = this.data();
       if (!this.running()) return;
 
+      // >>> Capture cumulative loss % from the worker <<<
       const dlLossNow = num(d.dlPacketLoss);
       const ulLossNow = num(d.ulPacketLoss);
+      const pingLossNow = num(d.pingPacketLoss);
       if (dlLossNow > 0) this.lastDlLoss = dlLossNow;
       if (ulLossNow > 0) this.lastUlLoss = ulLossNow;
+      if (pingLossNow > 0) this.lastPingLoss = pingLossNow;
+
+      // >>> One-shot "instant loss" flags from the worker <<<
       if (d.dlLostInst) this.pendingDlLost = true;
       if (d.ulLostInst) this.pendingUlLost = true;
+      if (d.pingLostInst) this.pendingPingLost = true;
 
       const now = Date.now();
       if (now - this.lastSampleAt < SpeedtestComponent.SAMPLE_INTERVAL_MS) return;
@@ -260,11 +278,31 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
           [...h, { t: now, v, lat: this.lastUlLat, lost }].filter((s) => s.t >= cutoff)
         );
       } else if (phase === 'ping') {
-        const v = num(d.pingInst) || num(d.pingStatus);
-        if (v <= 0) return;
-        this._historyPing.update((h) =>
-          [...h, { t: now, v }].filter((s) => s.t >= cutoff)
-        );
+        // >>> Idle ping: push a new point when either
+        //   - a new pingInst value arrives (successful ping), OR
+        //   - the worker signalled a lost packet since last time.
+        // We NEVER count losses ourselves here: the worker owns the truth
+        // via `pingPacketLoss` (cumulative %) and `pingLostInst` (one-shot).
+        const rawInst = d.pingInst;
+        const gotNewPing = rawInst && rawInst !== this.lastPingInst;
+
+        if (this.pendingPingLost) {
+          // A lost packet occurred: draw a marker at this timestamp.
+          this.pendingPingLost = false;
+          this._historyPing.update((h) =>
+            [...h, { t: now, v: 0, lost: true }].filter((s) => s.t >= cutoff)
+          );
+        }
+
+        if (gotNewPing) {
+          this.lastPingInst = rawInst;
+          const v = num(rawInst) || num(d.pingStatus);
+          if (v > 0) {
+            this._historyPing.update((h) =>
+              [...h, { t: now, v, lost: false }].filter((s) => s.t >= cutoff)
+            );
+          }
+        }
       }
     });
 
@@ -308,8 +346,11 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
     this.lastUlLat = null;
     this.lastDlLoss = 0;
     this.lastUlLoss = 0;
+    this.lastPingLoss = 0;
     this.pendingDlLost = false;
     this.pendingUlLost = false;
+    this.pendingPingLost = false;
+    this.lastPingInst = '';
     this.testCompletedAt.set(null);
 
     const runSettings: SpeedtestSettings = {

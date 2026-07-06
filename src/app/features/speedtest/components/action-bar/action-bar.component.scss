@@ -4,9 +4,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
+  gap: 0.25rem;
   position: relative;
-  padding: 0.5rem 0.25rem;
+  padding: 0.1rem 0.1rem;
 }
 
 // ── Start button (Material Design, smaller) ──
@@ -14,9 +14,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;          // centers content horizontally
-  gap: 0.5rem;
+  gap: 0.25rem;
   min-width: 200px;
-  height: 44px;
+  height: 40px;
   padding: 0 1.5rem;
   border: none;
   border-radius: 8px;
@@ -94,8 +94,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border: 1px solid var(--surface-border);
   border-radius: 8px;
   background: var(--surface-card);

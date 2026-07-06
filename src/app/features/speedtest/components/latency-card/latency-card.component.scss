@@ -62,6 +62,18 @@
   background: var(--surface-card);
   border: 1px solid var(--surface-border);
   border-left: 3px solid var(--surface-border);
+
+  // Packet loss KPI: green by default (no loss = good), red when there is loss.
+  &.loss {
+    border-left-color: #22c55e;
+
+    &.has-loss {
+      border-left-color: #ef4444;
+      background: rgba(239, 68, 68, 0.06);
+
+      .kpi-val { color: #ef4444; }
+    }
+  }
 }
 
 .kpi-label {

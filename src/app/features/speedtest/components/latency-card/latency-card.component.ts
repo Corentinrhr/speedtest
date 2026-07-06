@@ -12,6 +12,8 @@ const PING_TICKS = [0, 5, 20, 50, 100, 300] as const;
 
 export interface PingStats {
   min: number; avg: number; median: number; max: number; jitter: string;
+  // >>> Idle packet loss percentage (0-100). <<<
+  packetLoss: number;
 }
 
 @Component({
@@ -35,7 +37,14 @@ export class LatencyCardComponent {
   readonly chartData = computed(() => buildPingChart(this.history(), '#4facfe'));
   readonly chartOptions = buildPingOptions();
 
+  readonly hasLoss = computed(() => this.stats().packetLoss > 0);
+
   fmtNum = fmtNum;
+
+  fmtLoss(n: number): string {
+    if (n === null || n === undefined || isNaN(n)) return '--';
+    return n.toFixed(n < 10 ? 1 : 0);
+  }
 
   toggle(): void {
     this.collapsed.update((v) => !v);

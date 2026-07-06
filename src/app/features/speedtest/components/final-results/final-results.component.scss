@@ -1,6 +1,5 @@
 :host { display: block; }
 
-// ── Big results card ──
 .final-card {
   margin-top: 2rem;
   border-radius: 18px;
@@ -10,7 +9,6 @@
   overflow: hidden;
 }
 
-// ── Header ──
 .fc-header {
   display: flex;
   align-items: center;
@@ -38,7 +36,6 @@
 }
 
 .fc-header-text {
-  // Grow so the date badge is pushed to the far right.
   flex: 1;
 
   h2 {
@@ -54,7 +51,6 @@
   }
 }
 
-// ── Date / time badge ──
 .fc-header-date {
   display: inline-flex;
   align-items: center;
@@ -79,7 +75,6 @@
   }
 }
 
-// ── Grid of metric tiles ──
 .fc-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -94,7 +89,6 @@
   }
 }
 
-// ── Individual tile ──
 .fc-tile {
   position: relative;
   padding: 1.25rem 1.25rem 1.35rem;
@@ -114,6 +108,17 @@
   &.ul { border-top-color: #f5576c; .fc-icon-wrap { background: rgba(245, 87, 108, 0.12); i { color: #f5576c; } } }
   &.pg { border-top-color: #4facfe; .fc-icon-wrap { background: rgba(79, 172, 254, 0.12); i { color: #4facfe; } } }
   &.jt { border-top-color: #43e97b; .fc-icon-wrap { background: rgba(67, 233, 123, 0.14); i { color: #22c55e; } } }
+
+  // Packet Loss tile: neutral (grey) by default, red when there's any loss.
+  &.ls {
+    border-top-color: #94a3b8;
+
+    &.has-loss {
+      .loss-icon-wrap {
+        i { color: #ca1010; }
+      }
+    }
+  }
 }
 
 .fc-tile-head {
@@ -135,6 +140,16 @@
   i { font-size: 1.05rem; }
 }
 
+// Light grey square around the Packet Loss icon
+.loss-icon-wrap {
+  background: #e5e7eb;   // light grey
+  border-radius: 8px;    // square-ish (slightly rounded)
+
+  i {
+    color: #6b7280;      // neutral grey icon
+  }
+}
+
 .fc-title {
   font-size: 0.95rem;
   font-weight: 600;
@@ -149,7 +164,7 @@
   }
 }
 
-// ── Average / Median row ──
+// Average / Median row
 .fc-stats {
   display: flex;
   align-items: stretch;
@@ -161,6 +176,7 @@
   flex-direction: column;
   gap: 0.3rem;
   flex: 1;
+  min-width: 0;
 }
 
 .fc-stat-label {
@@ -185,6 +201,11 @@
     font-weight: 400;
     color: var(--text-color-secondary);
   }
+}
+
+// Packet-loss tile has 3 stats (Idle / Download / Upload) -> shrink font a bit so they fit nicely.
+.fc-tile.ls .fc-stat-val {
+  font-size: 1.5rem;
 }
 
 .fc-divider {

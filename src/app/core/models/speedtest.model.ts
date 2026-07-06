@@ -23,7 +23,6 @@ export interface SpeedtestData {
   dlLoadedJitter: string;
   ulLoadedPing: string;
   ulLoadedJitter: string;
-  // Instant loaded latency, used to plot the real evolution on charts
   dlLoadedPingInst: string;
   ulLoadedPingInst: string;
   pingInst: string;
@@ -32,6 +31,9 @@ export interface SpeedtestData {
   ulPacketLoss: string;
   dlLostInst: boolean;
   ulLostInst: boolean;
+  // >>> MOD: idle packet loss (during the ping/jitter test) <<<
+  pingPacketLoss: string;
+  pingLostInst: boolean;
 }
 
 export interface SpeedtestSettings {

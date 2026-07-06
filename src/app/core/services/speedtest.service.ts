@@ -133,11 +133,14 @@ export class SpeedtestService {
       dlLoadedPingInst: '',
       ulLoadedPingInst: '',
       pingInst: '',
-      // >>> MOD: packet loss <<<
+      // Packet loss under load (DL/UL)
       dlPacketLoss: '',
       ulPacketLoss: '',
       dlLostInst: false,
       ulLostInst: false,
+      // >>> Idle packet loss (during ping/jitter test) <<<
+      pingPacketLoss: '',
+      pingLostInst: false,
     };
   }
 }

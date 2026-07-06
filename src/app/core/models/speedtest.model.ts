@@ -27,6 +27,11 @@ export interface SpeedtestData {
   dlLoadedPingInst: string;
   ulLoadedPingInst: string;
   pingInst: string;
+  // Packet loss under load (percentage as string) + instant "lost" flags
+  dlPacketLoss: string;
+  ulPacketLoss: string;
+  dlLostInst: boolean;
+  ulLostInst: boolean;
 }
 
 export interface SpeedtestSettings {

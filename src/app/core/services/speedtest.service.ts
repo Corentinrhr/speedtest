@@ -126,7 +126,6 @@ export class SpeedtestService {
       ulProgress: 0,
       pingProgress: 0,
       testId: null,
-      // >>> MODIF <<<
       dlLoadedPing: '',
       dlLoadedJitter: '',
       ulLoadedPing: '',
@@ -134,6 +133,11 @@ export class SpeedtestService {
       dlLoadedPingInst: '',
       ulLoadedPingInst: '',
       pingInst: '',
+      // >>> MOD: packet loss <<<
+      dlPacketLoss: '',
+      ulPacketLoss: '',
+      dlLostInst: false,
+      ulLostInst: false,
     };
   }
 }

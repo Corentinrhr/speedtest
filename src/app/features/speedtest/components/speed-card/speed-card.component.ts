@@ -14,6 +14,7 @@ const SPEED_TICKS = [0, 1, 10, 50, 100, 1000] as const;
 export interface SpeedStats {
   min: number; avg: number; median: number; max: number;
   latMin: number; latAvg: number; latMax: number; latJitter: number;
+  packetLoss: number;
 }
 
 type SpeedKind = 'dl' | 'ul';
@@ -47,6 +48,9 @@ export class SpeedCardComponent {
   readonly kpiClass = computed(() => (this.isDl() ? 'dl' : 'ul'));
   readonly kpiPrefix = computed(() => (this.isDl() ? 'DL' : 'UL'));
 
+  // Packet loss helpers: highlight the KPI when there is any loss.
+  readonly hasLoss = computed(() => this.stats().packetLoss > 0);
+
   private readonly color = computed(() => (this.isDl() ? COLOR_DL : COLOR_UL));
 
   readonly chartData = computed(() => buildDualChart(this.history(), this.color()));
@@ -54,6 +58,12 @@ export class SpeedCardComponent {
 
   fmtNum = fmtNum;
   fmtLat = fmtLat;
+
+  // Format the packet loss percentage (always show, "0" included).
+  fmtLoss(n: number): string {
+    if (n === null || n === undefined || isNaN(n)) return '--';
+    return n.toFixed(n < 10 ? 1 : 0);
+  }
 
   toggle(): void {
     this.collapsed.update((v) => !v);

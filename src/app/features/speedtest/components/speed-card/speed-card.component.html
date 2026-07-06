@@ -37,6 +37,7 @@
           <div class="kpi-box lat"><span class="kpi-label">Loaded Average</span><span class="kpi-val">{{ fmtLat(stats().latAvg) }}<small>ms</small></span></div>
           <div class="kpi-box lat"><span class="kpi-label">Loaded Max</span><span class="kpi-val">{{ fmtLat(stats().latMax) }}<small>ms</small></span></div>
           <div class="kpi-box lat"><span class="kpi-label">Loaded Jitter</span><span class="kpi-val">{{ fmtLat(stats().latJitter) }}<small>ms</small></span></div>
+          <div class="kpi-box loss" [class.has-loss]="hasLoss()"><span class="kpi-label">Packet Loss</span><span class="kpi-val">{{ fmtLoss(stats().packetLoss) }}<small>%</small></span></div>
         </div>
       }
     </div>

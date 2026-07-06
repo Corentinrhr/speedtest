@@ -3,8 +3,9 @@ import { fmtClock } from './format.util';
 export const COLOR_DL = '#4f46e5';   // blue/indigo -> Download
 export const COLOR_UL = '#f5576c';   // red         -> Upload
 export const COLOR_LAT = '#4b5563';  // dark gray   -> Loaded latency
+export const COLOR_LOSS = '#ef4444'; // red         -> Packet loss markers
 
-export interface DualSample { t: number; v: number; lat: number | null; }
+export interface DualSample { t: number; v: number; lat: number | null; lost?: boolean; }
 export interface SpeedSample { t: number; v: number; }
 
 // Chart options for the speed cards: dual Y axes (speed + loaded latency).
@@ -21,6 +22,10 @@ export function buildDualOptions(speedColor: string, latColor: string) {
           label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) => {
             const label = ctx.dataset.label ?? '';
             const val = ctx.parsed.y;
+            // Packet loss markers: show a dedicated message.
+            if (label.toLowerCase().includes('packet loss')) {
+              return val === null || val === undefined ? '' : 'Packet lost';
+            }
             if (val === null || val === undefined) return `${label}: --`;
             const unit = label.toLowerCase().includes('latency') ? ' ms' : ' Mb/s';
             return `${label}: ${val.toFixed(2)}${unit}`;
@@ -73,39 +78,65 @@ export function buildPingOptions() {
   };
 }
 
-// Speed chart with a second line for loaded latency.
+// Speed chart with a second line for loaded latency + a marker dataset for packet loss.
 export function buildDualChart(h: DualSample[], color: string) {
+  // Loss markers are plotted on the latency axis (y1) at each lost sample.
+  // We place the cross at the latency value if known, otherwise at 0.
+  const lossData = h.map((s) => (s.lost ? (s.lat ?? 0) : null));
+  const hasLoss = lossData.some((v) => v !== null);
+
+  const datasets: unknown[] = [
+    {
+      label: 'Speed',
+      data: h.map((s) => s.v),
+      borderColor: color,
+      backgroundColor: color + '14',
+      fill: true,
+      tension: 0.4,
+      pointRadius: 3,
+      pointHoverRadius: 6,
+      pointBackgroundColor: color,
+      borderWidth: 2.5,
+      yAxisID: 'y',
+    },
+    {
+      label: 'Loaded latency',
+      data: h.map((s) => s.lat),
+      borderColor: COLOR_LAT,
+      backgroundColor: 'transparent',
+      fill: false,
+      tension: 0.3,
+      pointRadius: 3,
+      pointHoverRadius: 6,
+      pointBackgroundColor: COLOR_LAT,
+      borderWidth: 1.5,
+      spanGaps: true,
+      yAxisID: 'y1',
+    },
+  ];
+
+  // Only add the loss dataset if there is at least one lost packet.
+  if (hasLoss) {
+    datasets.push({
+      label: 'Packet loss',
+      data: lossData,
+      borderColor: 'transparent',
+      backgroundColor: 'transparent',
+      showLine: false,
+      pointStyle: 'crossRot',      // draws an "x" marker
+      pointRadius: 8,
+      pointHoverRadius: 11,
+      pointBorderColor: COLOR_LOSS,
+      pointBorderWidth: 3,
+      pointBackgroundColor: COLOR_LOSS,
+      spanGaps: false,
+      yAxisID: 'y1',
+    });
+  }
+
   return {
     labels: h.map((s) => fmtClock(s.t)),
-    datasets: [
-      {
-        label: 'Speed',
-        data: h.map((s) => s.v),
-        borderColor: color,
-        backgroundColor: color + '14',
-        fill: true,
-        tension: 0.4,
-        pointRadius: 3,
-        pointHoverRadius: 6,
-        pointBackgroundColor: color,
-        borderWidth: 2.5,
-        yAxisID: 'y',
-      },
-      {
-        label: 'Loaded latency',
-        data: h.map((s) => s.lat),
-        borderColor: COLOR_LAT,
-        backgroundColor: 'transparent',
-        fill: false,
-        tension: 0.3,
-        pointRadius: 3,
-        pointHoverRadius: 6,
-        pointBackgroundColor: COLOR_LAT,
-        borderWidth: 1.5,
-        spanGaps: true,
-        yAxisID: 'y1',
-      },
-    ],
+    datasets,
   };
 }
 

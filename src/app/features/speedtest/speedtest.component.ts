@@ -14,7 +14,7 @@ import { ServerSelectorComponent } from '@shared/components/server-selector/serv
 import { ActionBarComponent } from './components/action-bar/action-bar.component';
 import { LatencyCardComponent, PingStats } from './components/latency-card/latency-card.component';
 import { SpeedCardComponent, SpeedStats } from './components/speed-card/speed-card.component';
-import { FinalResultsComponent, ResultMetric, JitterMetric } from './components/final-results/final-results.component';
+import { FinalResultsComponent, ResultMetric } from './components/final-results/final-results.component';
 import { SettingsDialogComponent } from './components/settings-dialog/settings-dialog.component';
 
 // Shared helpers
@@ -72,9 +72,6 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
   readonly durationUl = signal(15);
   readonly durationPing = signal(5);
   readonly loadedLatency = signal(true);
-
-  // Timestamp captured when the test finishes (shown in the results card).
-  readonly testEndDate = signal<Date>(new Date());
 
   // ── Sampling internals ──
   private static readonly MAX_WINDOW_MS = 5 * 60 * 1000;
@@ -178,25 +175,20 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
     median: median(this._historyPing()),
   }));
 
-  // Idle jitter : max (spread) + median of successive differences.
-  readonly jitterResult = computed<JitterMetric>(() => {
-    const vals = this._historyPing().map((s) => s.v).filter((v) => v > 0);
-
-    // Max jitter = amplitude (max - min) of the idle latency samples.
-    const maxJitter = vals.length < 2 ? 0 : Math.max(...vals) - Math.min(...vals);
-
-    // Median jitter = median of the absolute successive differences.
+  // Idle jitter = successive differences of the idle latency samples.
+  readonly jitterResult = computed<ResultMetric>(() => {
     const diffs = this.idleJitterDiffs();
-    let medJitter = 0;
-    if (diffs.length > 0) {
-      const sorted = [...diffs].sort((a, b) => a - b);
-      const mid = Math.floor(sorted.length / 2);
-      medJitter = sorted.length % 2
-        ? sorted[mid]
-        : (sorted[mid - 1] + sorted[mid]) / 2;
-    }
+    if (diffs.length === 0) return { avg: 0, median: 0 };
 
-    return { max: maxJitter, median: medJitter };
+    const mean = diffs.reduce((a, b) => a + b, 0) / diffs.length;
+
+    const sorted = [...diffs].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    const med = sorted.length % 2
+      ? sorted[mid]
+      : (sorted[mid - 1] + sorted[mid]) / 2;
+
+    return { avg: mean, median: med };
   });
 
   // ── Idle jitter helpers (shared by pingStats + jitterResult) ──
@@ -254,16 +246,6 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
           [...h, { t: now, v }].filter((s) => s.t >= cutoff)
         );
       }
-    });
-
-    // Capture the end date when the test transitions to "finished".
-    let wasFinished = false;
-    effect(() => {
-      const isFinished = this.finished();
-      if (isFinished && !wasFinished) {
-        this.testEndDate.set(new Date());
-      }
-      wasFinished = isFinished;
     });
   }
 

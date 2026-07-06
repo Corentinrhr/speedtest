@@ -1,5 +1,5 @@
 /*
-	LibreSpeed - Worker (modify: DL/UL latency under load + instantaneous latency)
+	LibreSpeed - Worker (MOD: DL/UL latency under load + instantaneous latency + packet loss)
 	by Federico Dossena
 	https://github.com/librespeed/speedtest/
 	GNU LGPLv3 License
@@ -23,6 +23,11 @@ let ulLoadedJitter = "";
 let dlLoadedPingInst = "";
 let ulLoadedPingInst = "";
 let pingInst = "";
+// >>> MOD: packet loss under load <<<
+let dlPacketLoss = "";   // percentage 0-100 as string
+let ulPacketLoss = "";   // percentage 0-100 as string
+let dlLostInst = false;  // true for one status cycle when a DL ping was just lost
+let ulLostInst = false;  // true for one status cycle when a UL ping was just lost
 
 let log = "";
 function tlog(s) {
@@ -74,7 +79,9 @@ let settings = {
 	telemetry_extra: "",
 	forceIE11Workaround: false,
 	loadedLatency: true,
-	loadedLatency_interval: 100 
+	loadedLatency_interval: 100,
+	// >>> MOD: timeout above which a loaded-latency ping is counted as lost <<<
+	loadedLatency_timeout: 2000
 };
 
 let xhr = null;
@@ -88,13 +95,17 @@ function url_sep(url) {
 /*
    MOD: Independent background pinger.
    This pinger runs in parallel with the DL or UL test and measures the latency under load.
+   It also counts packet loss: a network error OR a request taking more than
+   loadedLatency_timeout ms is counted as a lost packet.
 */
 let bgPinger = {
 	running: false,
 	target: null,   // "dl" or "ul"
 	xhr: null,
 	prevInstspd: 0,
-	count: 0,
+	count: 0,       // number of successful pings
+	sent: 0,        // total number of requests (success + lost)
+	lost: 0,        // number of lost packets
 	ping: 0,
 	jitter: 0,
 
@@ -103,10 +114,19 @@ let bgPinger = {
 		this.target = target;
 		this.prevInstspd = 0;
 		this.count = 0;
+		this.sent = 0;
+		this.lost = 0;
 		this.ping = 0;
 		this.jitter = 0;
-		if (target === "dl") dlLoadedPingInst = "";
-		else if (target === "ul") ulLoadedPingInst = "";
+		if (target === "dl") {
+			dlLoadedPingInst = "";
+			dlPacketLoss = "";
+			dlLostInst = false;
+		} else if (target === "ul") {
+			ulLoadedPingInst = "";
+			ulPacketLoss = "";
+			ulLostInst = false;
+		}
 		this._loop();
 	},
 
@@ -118,27 +138,71 @@ let bgPinger = {
 		}
 	},
 
+	_commitLoss: function() {
+		const loss = this.sent > 0
+			? ((this.lost / this.sent) * 100).toFixed(2)
+			: "0.00";
+		if (this.target === "dl") {
+			dlPacketLoss = loss;
+			dlLostInst = true;
+		} else if (this.target === "ul") {
+			ulPacketLoss = loss;
+			ulLostInst = true;
+		}
+	},
+
 	_commit: function(instspd) {
 		const p = this.ping.toFixed(2);
 		const j = this.jitter.toFixed(2);
 		const inst = instspd.toFixed(2);
+		const loss = this.sent > 0
+			? ((this.lost / this.sent) * 100).toFixed(2)
+			: "0.00";
 		if (this.target === "dl") {
 			dlLoadedPing = p;
 			dlLoadedJitter = j;
 			dlLoadedPingInst = inst;
+			dlPacketLoss = loss;
+			dlLostInst = false;
 		} else if (this.target === "ul") {
 			ulLoadedPing = p;
 			ulLoadedJitter = j;
 			ulLoadedPingInst = inst;
+			ulPacketLoss = loss;
+			ulLostInst = false;
 		}
+	},
+
+	// Called when a ping fails (network error or timeout).
+	_onLost: function() {
+		if (!this.running) return;
+		this.sent++;
+		this.lost++;
+		this.prevInstspd = 0;
+		this._commitLoss();
+		setTimeout(this._loop.bind(this), settings.loadedLatency_interval);
 	},
 
 	_loop: function() {
 		if (!this.running) return;
 		const prevT = new Date().getTime();
+		let settled = false;
+
+		// Manual timeout: if the request takes more than loadedLatency_timeout,
+		// count it as a lost packet and move on.
+		const timeoutTimer = setTimeout(function() {
+			if (settled || !this.running) return;
+			settled = true;
+			try { if (this.xhr) this.xhr.abort(); } catch (e) {}
+			this._onLost();
+		}.bind(this), settings.loadedLatency_timeout);
+
 		this.xhr = new XMLHttpRequest();
 		this.xhr.onload = function() {
-			if (!this.running) return;
+			if (settled || !this.running) return;
+			settled = true;
+			clearTimeout(timeoutTimer);
+
 			let instspd = new Date().getTime() - prevT;
 			if (settings.ping_allowPerformanceApi) {
 				try {
@@ -164,16 +228,21 @@ let bgPinger = {
 			}
 			this.prevInstspd = instspd;
 			this.count++;
+			this.sent++;
 			this._commit(instspd);
 
 			const rtt = new Date().getTime() - prevT;
 			const delay = Math.max(0, settings.loadedLatency_interval - rtt);
 			setTimeout(this._loop.bind(this), delay);
 		}.bind(this);
+
 		this.xhr.onerror = function() {
-			if (!this.running) return;
-			setTimeout(this._loop.bind(this), settings.loadedLatency_interval);
+			if (settled || !this.running) return;
+			settled = true;
+			clearTimeout(timeoutTimer);
+			this._onLost();
 		}.bind(this);
+
 		this.xhr.open(
 			"GET",
 			settings.url_ping + url_sep(settings.url_ping) +
@@ -205,7 +274,12 @@ this.addEventListener("message", function(e) {
 				ulLoadedJitter: ulLoadedJitter,
 				dlLoadedPingInst: dlLoadedPingInst,
 				ulLoadedPingInst: ulLoadedPingInst,
-				pingInst: pingInst
+				pingInst: pingInst,
+				// >>> MOD: packet loss <<<
+				dlPacketLoss: dlPacketLoss,
+				ulPacketLoss: ulPacketLoss,
+				dlLostInst: dlLostInst,
+				ulLostInst: ulLostInst
 			})
 		);
 	}
@@ -348,6 +422,10 @@ this.addEventListener("message", function(e) {
 		dlLoadedPingInst = "";
 		ulLoadedPingInst = "";
 		pingInst = "";
+		dlPacketLoss = "";
+		ulPacketLoss = "";
+		dlLostInst = false;
+		ulLostInst = false;
 	}
 });
 

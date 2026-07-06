@@ -18,6 +18,7 @@
   padding: 1.5rem 1.75rem;
   background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(124, 58, 237, 0.08));
   border-bottom: 1px solid var(--surface-border);
+  flex-wrap: wrap;
 }
 
 .fc-header-icon {
@@ -37,6 +38,9 @@
 }
 
 .fc-header-text {
+  // Grow so the date badge is pushed to the far right.
+  flex: 1;
+
   h2 {
     font-size: 1.35rem;
     font-weight: 700;
@@ -47,6 +51,31 @@
     font-size: 0.85rem;
     color: var(--text-color-secondary);
     margin: 0;
+  }
+}
+
+// ── Date / time badge ──
+.fc-header-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-color-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  i {
+    font-size: 0.9rem;
+    color: var(--primary-color);
+  }
+
+  @media screen and (max-width: 600px) {
+    margin-top: 0.5rem;
   }
 }
 

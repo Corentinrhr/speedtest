@@ -1,3 +1,6 @@
+// ─── PrimeIcons font ───
+@import 'primeicons/primeicons.css';
+
 // ─── Reset ───
 *,
 *::before,
@@ -18,8 +21,6 @@ body {
 }
 
 // ─── Force dark mode ───
-// PrimeNG Aura theme uses CSS variables. We apply the dark-mode class
-// so the Aura dark palette is activated.
 html {
   @media (prefers-color-scheme: dark) {
     &:not(.light-mode) {

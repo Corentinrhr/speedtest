@@ -1,11 +1,10 @@
 <div class="speedtest-page">
   <!-- Breadcrumb -->
   <div class="page-breadcrumb">
-    <i class="pi pi-caret-left"></i>
+    <i class="pi pi-caret-right"></i>
     <span class="crumb muted">LibreSpeed</span>
     <i class="pi pi-caret-right"></i>
     <span class="crumb active">Speedtest</span>
-    <i class="pi pi-caret-left"></i>
   </div>
 
   <!-- Action bar (nicer, taller start button + settings icon) -->
@@ -78,10 +77,10 @@
   <!-- Final results -->
   @if (finished()) {
     <app-final-results
-      [download]="downloadSpeed()"
-      [upload]="uploadSpeed()"
-      [ping]="ping()"
-      [jitter]="jitter()"
+      [download]="downloadResult()"
+      [upload]="uploadResult()"
+      [ping]="pingResult()"
+      [jitter]="jitterResult()"
     />
   }
 </div>

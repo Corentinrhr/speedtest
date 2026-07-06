@@ -99,15 +99,16 @@
   border: 1px solid var(--surface-border);
   border-radius: 8px;
   background: var(--surface-card);
-  color: #B0B0B0;                  // light gray (drives the inline SVG via currentColor)
+  color: #B0B0B0;                  // light gray
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 
-  // Inline SVG cog: uses currentColor, so it is always visible in light gray,
-  // independent of the PrimeIcons font.
+  // PrimeIcons cog glyph. Uses the button color (currentColor).
   .settings-icon {
+    font-size: 1.25rem;
     color: #B0B0B0;
     display: block;
+    line-height: 1;
     transition: color 0.15s ease;
   }
 
@@ -123,10 +124,4 @@
     outline: 2px solid var(--primary-color);
     outline-offset: 2px;
   }
-}
-
-@media screen and (max-width: 600px) {
-  .start-btn { min-width: 0; width: 100%; }
-  .settings-icon-btn { position: static; }
-  .action-bar { flex-wrap: wrap; }
 }

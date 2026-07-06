@@ -59,6 +59,14 @@ export class SpeedtestService {
       `${environment.workerPath}?r=${Math.random()}`
     );
 
+    this.worker.onerror = (err) => {
+      console.error('[SpeedtestWorker] error:', err.message, err.filename, err.lineno);
+    };
+    
+    this.worker.onmessageerror = (err) => {
+      console.error('[SpeedtestWorker] message error:', err);
+    };
+
     this.worker.onmessage = (e: MessageEvent) => {
       this.zone.run(() => {
         const data: SpeedtestData = JSON.parse(e.data);
@@ -133,12 +141,10 @@ export class SpeedtestService {
       dlLoadedPingInst: '',
       ulLoadedPingInst: '',
       pingInst: '',
-      // Packet loss under load (DL/UL)
       dlPacketLoss: '',
       ulPacketLoss: '',
       dlLostInst: false,
       ulLostInst: false,
-      // >>> Idle packet loss (during ping/jitter test) <<<
       pingPacketLoss: '',
       pingLostInst: false,
     };

@@ -1,100 +1,108 @@
-<div class="speedtest-page">
-  <!-- Breadcrumb -->
-  <div class="page-breadcrumb">
-    <i class="pi pi-caret-right"></i>
-    <span class="crumb muted">LibreSpeed</span>
-    <i class="pi pi-caret-right"></i>
-    <span class="crumb active">Speedtest</span>
-  </div>
+<div class="final-card">
+  <div class="fc-header">
+    <div class="fc-header-icon">
+      <i class="pi pi-book"></i>
+    </div>
+    <div class="fc-header-text">
+      <h2>Test Results</h2>
+      <p>Average and median values measured during the test</p>
+    </div>
 
-  <!-- Action bar (nicer, taller start button + settings icon) -->
-  <p-card styleClass="action-bar-card">
-    <app-action-bar
-      [label]="buttonLabel()"
-      [icon]="buttonIcon()"
-      [disabled]="buttonDisabled()"
-      [running]="running()"
-      (startStop)="onStartStop()"
-      (openSettings)="openSettings()"
-    />
-  </p-card>
-
-  <!-- Server selector -->
-  @if (showServerSelector()) {
-    <app-server-selector
-      [servers]="servers()"
-      [selectedServer]="selectedServer()"
-      [disabled]="running()"
-      [loading]="serversLoading()"
-      (serverChange)="onServerChange($event)"
-    />
-  }
-
-  <!-- Two columns: Latency (left) + stacked DL/UL (right) -->
-  <div class="results-columns" [class.no-latency]="!testPing()">
-    <!-- Left column: Latency -->
-    @if (testPing()) {
-      <div class="col-latency">
-        <app-latency-card
-          [current]="currentPing()"
-          [progress]="pingProgress()"
-          [history]="historyPing()"
-          [stats]="pingStats()"
-          [showResults]="showResults()"
-          [(collapsed)]="collapsedPing"
-        />
-      </div>
-    }
-
-    <!-- Right column: Download + Upload stacked -->
-    <div class="col-speeds">
-      @if (testDl()) {
-        <app-speed-card
-          kind="dl"
-          [current]="currentDl()"
-          [progress]="dlProgress()"
-          [history]="historyDl()"
-          [stats]="dlStats()"
-          [showResults]="showResults()"
-          [(collapsed)]="collapsedDl"
-        />
-      }
-
-      @if (testUl()) {
-        <app-speed-card
-          kind="ul"
-          [current]="currentUl()"
-          [progress]="ulProgress()"
-          [history]="historyUl()"
-          [stats]="ulStats()"
-          [showResults]="showResults()"
-          [(collapsed)]="collapsedUl"
-        />
-      }
+    <div class="fc-header-date">
+      <i class="pi pi-calendar"></i>
+      <span>{{ fmtDate(testDate()) }}</span>
     </div>
   </div>
 
-  <!-- Final results -->
-  @if (finished()) {
-    <app-final-results
-      [download]="downloadResult()"
-      [upload]="uploadResult()"
-      [ping]="pingResult()"
-      [jitter]="jitterResult()"
-      [downloadLoss]="downloadLossResult()"
-      [uploadLoss]="uploadLossResult()"
-    />
-  }
-</div>
+  <div class="fc-grid">
+    <div class="fc-tile dl">
+      <div class="fc-tile-head">
+        <span class="fc-icon-wrap"><i class="pi pi-arrow-down"></i></span>
+        <span class="fc-title">Download</span>
+      </div>
+      <div class="fc-stats">
+        <div class="fc-stat">
+          <span class="fc-stat-label">Average</span>
+          <span class="fc-stat-val">{{ fmt(download().avg) }}<small>Mbps</small></span>
+        </div>
+        <div class="fc-divider"></div>
+        <div class="fc-stat">
+          <span class="fc-stat-label">Median</span>
+          <span class="fc-stat-val">{{ fmt(download().median) }}<small>Mbps</small></span>
+        </div>
+      </div>
+    </div>
 
-<!-- Settings dialog -->
-<app-settings-dialog
-  [(visible)]="showSettings"
-  [(testPing)]="testPing"
-  [(testDl)]="testDl"
-  [(testUl)]="testUl"
-  [(durationPing)]="durationPing"
-  [(durationDl)]="durationDl"
-  [(durationUl)]="durationUl"
-  [(loadedLatency)]="loadedLatency"
-/>
+    <div class="fc-tile ul">
+      <div class="fc-tile-head">
+        <span class="fc-icon-wrap"><i class="pi pi-arrow-up"></i></span>
+        <span class="fc-title">Upload</span>
+      </div>
+      <div class="fc-stats">
+        <div class="fc-stat">
+          <span class="fc-stat-label">Average</span>
+          <span class="fc-stat-val">{{ fmt(upload().avg) }}<small>Mbps</small></span>
+        </div>
+        <div class="fc-divider"></div>
+        <div class="fc-stat">
+          <span class="fc-stat-label">Median</span>
+          <span class="fc-stat-val">{{ fmt(upload().median) }}<small>Mbps</small></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="fc-tile pg">
+      <div class="fc-tile-head">
+        <span class="fc-icon-wrap"><i class="pi pi-arrow-right-arrow-left"></i></span>
+        <span class="fc-title">Ping <em>(idle)</em></span>
+      </div>
+      <div class="fc-stats">
+        <div class="fc-stat">
+          <span class="fc-stat-label">Average</span>
+          <span class="fc-stat-val">{{ fmt(ping().avg) }}<small>ms</small></span>
+        </div>
+        <div class="fc-divider"></div>
+        <div class="fc-stat">
+          <span class="fc-stat-label">Median</span>
+          <span class="fc-stat-val">{{ fmt(ping().median) }}<small>ms</small></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="fc-tile jt">
+      <div class="fc-tile-head">
+        <span class="fc-icon-wrap"><i class="pi pi-wave-pulse"></i></span>
+        <span class="fc-title">Jitter <em>(idle)</em></span>
+      </div>
+      <div class="fc-stats">
+        <div class="fc-stat">
+          <span class="fc-stat-label">Jitter Average</span>
+          <span class="fc-stat-val">{{ fmt(jitter().avg) }}<small>ms</small></span>
+        </div>
+        <div class="fc-divider"></div>
+        <div class="fc-stat">
+          <span class="fc-stat-label">Jitter Max</span>
+          <span class="fc-stat-val">{{ fmt(jitter().max) }}<small>ms</small></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="fc-tile ls" [class.has-loss]="downloadLoss() > 0 || uploadLoss() > 0">
+      <div class="fc-tile-head">
+        <span class="fc-icon-wrap"><i class="pi pi-times-circle"></i></span>
+        <span class="fc-title">Packet Loss <em>(loaded)</em></span>
+      </div>
+      <div class="fc-stats">
+        <div class="fc-stat">
+          <span class="fc-stat-label">Download</span>
+          <span class="fc-stat-val">{{ fmtLoss(downloadLoss()) }}<small>%</small></span>
+        </div>
+        <div class="fc-divider"></div>
+        <div class="fc-stat">
+          <span class="fc-stat-label">Upload</span>
+          <span class="fc-stat-val">{{ fmtLoss(uploadLoss()) }}<small>%</small></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

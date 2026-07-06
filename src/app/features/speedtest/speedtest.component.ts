@@ -10,14 +10,12 @@ import { SpeedtestSettings, TestState } from '@core/models/speedtest.model';
 import { SpeedtestServer } from '@core/models/server.model';
 import { ServerSelectorComponent } from '@shared/components/server-selector/server-selector.component';
 
-// Sub-components
 import { ActionBarComponent } from './components/action-bar/action-bar.component';
 import { LatencyCardComponent, PingStats } from './components/latency-card/latency-card.component';
 import { SpeedCardComponent, SpeedStats } from './components/speed-card/speed-card.component';
 import { FinalResultsComponent, ResultMetric } from './components/final-results/final-results.component';
 import { SettingsDialogComponent } from './components/settings-dialog/settings-dialog.component';
 
-// Shared helpers
 import { DualSample, SpeedSample } from './shared/chart-options.util';
 import {
   num, avg, median, max, min,
@@ -48,7 +46,6 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
 
   private settings: SpeedtestSettings = {};
 
-  // ── Service state ──
   readonly data = this.speedtest.data;
   readonly running = this.speedtest.running;
   readonly finished = this.speedtest.finished;
@@ -58,12 +55,10 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
 
   readonly showServerSelector = signal(false);
 
-  // ── Collapsed state (owned here, two-way bound to the cards) ──
   readonly collapsedDl = signal(false);
   readonly collapsedUl = signal(false);
   readonly collapsedPing = signal(false);
 
-  // ── Settings dialog state (two-way bound to the dialog) ──
   readonly showSettings = signal(false);
   readonly testPing = signal(true);
   readonly testDl = signal(true);
@@ -73,7 +68,9 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
   readonly durationPing = signal(5);
   readonly loadedLatency = signal(true);
 
-  // ── Sampling internals ──
+  readonly testCompletedAt = signal<Date | null>(null);
+  readonly finalResultsDate = computed(() => this.testCompletedAt() ?? new Date());
+
   private static readonly MAX_WINDOW_MS = 5 * 60 * 1000;
   private static readonly SAMPLE_INTERVAL_MS = 250;
 
@@ -85,41 +82,37 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
   private lastDlLat: number | null = null;
   private lastUlLat: number | null = null;
 
-  // >>> FIX: accumulate the "lost" flag between two samples so we never miss it.
-  // dlLostInst / ulLostInst are only true for one worker cycle (~200ms),
-  // while we sample every 250ms => without accumulation the loss is often missed.
   private pendingDlLost = false;
   private pendingUlLost = false;
 
-  // >>> Live packet loss tracker (percentages). Persisted after the test ends.
   private lastDlLoss = 0;
   private lastUlLoss = 0;
 
-  // Expose history to the template.
   readonly historyDl = this._historyDl.asReadonly();
   readonly historyUl = this._historyUl.asReadonly();
   readonly historyPing = this._historyPing.asReadonly();
 
-  // ── Action bar ──
   readonly buttonLabel = computed(() => {
     if (this.serversLoading()) return 'Loading...';
     if (this.running()) return 'Abort';
     if (this.finished()) return 'Restart';
     return 'Start Test';
   });
+
   readonly buttonIcon = computed(() =>
     this.running() ? 'pi-stop' : 'pi-play'
   );
+
   readonly buttonDisabled = computed(
     () => (this.serversLoading() && !this.running()) || !this.atLeastOneTest()
   );
 
   readonly showResults = computed(() => this.running() || this.finished());
+
   readonly atLeastOneTest = computed(
     () => this.testPing() || this.testDl() || this.testUl()
   );
 
-  // ── Current phase (drives which history gets sampled) ──
   readonly activePhase = computed<Phase | 'idle'>(() => {
     switch (this.data().testState) {
       case TestState.DOWNLOAD: return 'download';
@@ -129,7 +122,6 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
     }
   });
 
-  // ── Live values for the gauges ──
   readonly currentDl = computed(() => num(this.data().dlStatus));
   readonly currentUl = computed(() => num(this.data().ulStatus));
   readonly currentPing = computed(() => num(this.data().pingStatus));
@@ -138,18 +130,16 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
   readonly ulProgress = computed(() => Math.round(this.data().ulProgress * 100));
   readonly pingProgress = computed(() => Math.round(this.data().pingProgress * 100));
 
-  // >>> Live packet loss. Use the live worker value while running,
-  // and fall back to the last known value once finished.
   readonly dlLoss = computed(() => {
     const live = num(this.data().dlPacketLoss);
     return this.finished() ? this.lastDlLoss : live;
   });
+
   readonly ulLoss = computed(() => {
     const live = num(this.data().ulPacketLoss);
     return this.finished() ? this.lastUlLoss : live;
   });
 
-  // ── Aggregated stats passed to the cards ──
   readonly dlStats = computed<SpeedStats>(() => ({
     min: min(this._historyDl()),
     avg: avg(this._historyDl()),
@@ -182,7 +172,6 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
     jitter: this.idleJitterSpread(),
   }));
 
-  // ── Final results : average + median per metric ──
   readonly downloadResult = computed<ResultMetric>(() => ({
     avg: avg(this._historyDl()),
     median: median(this._historyDl()),
@@ -198,27 +187,24 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
     median: median(this._historyPing()),
   }));
 
-  // Idle jitter = successive differences of the idle latency samples.
   readonly jitterResult = computed<ResultMetric>(() => {
     const diffs = this.idleJitterDiffs();
-    if (diffs.length === 0) return { avg: 0, median: 0 };
+    if (diffs.length === 0) {
+      return { avg: 0, median: 0 };
+    }
 
     const mean = diffs.reduce((a, b) => a + b, 0) / diffs.length;
+    const spread = Number(this.idleJitterSpread());
 
-    const sorted = [...diffs].sort((a, b) => a - b);
-    const mid = Math.floor(sorted.length / 2);
-    const med = sorted.length % 2
-      ? sorted[mid]
-      : (sorted[mid - 1] + sorted[mid]) / 2;
-
-    return { avg: mean, median: med };
+    return {
+      avg: mean,
+      median: isNaN(spread) ? 0 : spread,
+    };
   });
 
-  // >>> Final packet loss (DL + UL) exposed to the results card.
   readonly downloadLossResult = computed(() => this.dlLoss());
   readonly uploadLossResult = computed(() => this.ulLoss());
 
-  // ── Idle jitter helpers (shared by pingStats + jitterResult) ──
   private idleJitterDiffs(): number[] {
     const vals = this._historyPing().map((s) => s.v).filter((v) => v > 0);
     const diffs: number[] = [];
@@ -239,8 +225,6 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
       const d = this.data();
       if (!this.running()) return;
 
-      // >>> FIX: track packet loss + accumulate the "lost" flag on EVERY worker
-      // status cycle (not only when we sample), otherwise the one-shot flag is missed.
       const dlLossNow = num(d.dlPacketLoss);
       const ulLossNow = num(d.ulPacketLoss);
       if (dlLossNow > 0) this.lastDlLoss = dlLossNow;
@@ -260,7 +244,6 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
         if (v <= 0) return;
         const inst = num(d.dlLoadedPingInst);
         if (inst > 0) this.lastDlLat = inst;
-        // >>> FIX: use (and reset) the accumulated lost flag.
         const lost = this.pendingDlLost;
         this.pendingDlLost = false;
         this._historyDl.update((h) =>
@@ -271,7 +254,6 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
         if (v <= 0) return;
         const inst = num(d.ulLoadedPingInst);
         if (inst > 0) this.lastUlLat = inst;
-        // >>> FIX: use (and reset) the accumulated lost flag.
         const lost = this.pendingUlLost;
         this.pendingUlLost = false;
         this._historyUl.update((h) =>
@@ -283,6 +265,12 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
         this._historyPing.update((h) =>
           [...h, { t: now, v }].filter((s) => s.t >= cutoff)
         );
+      }
+    });
+
+    effect(() => {
+      if (this.finished() && !this.testCompletedAt()) {
+        this.testCompletedAt.set(new Date());
       }
     });
   }
@@ -297,7 +285,6 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
     this.speedtest.abort();
   }
 
-  // ── Test lifecycle ──
   private buildTestOrder(): string {
     const parts: string[] = [];
     if (this.testPing()) parts.push('P');
@@ -313,18 +300,17 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
     }
     if (!this.atLeastOneTest()) return;
 
-    // Reset histories + sampling state.
     this._historyDl.set([]);
     this._historyUl.set([]);
     this._historyPing.set([]);
     this.lastSampleAt = 0;
     this.lastDlLat = null;
     this.lastUlLat = null;
-    // >>> FIX: reset packet loss trackers + pending flags.
     this.lastDlLoss = 0;
     this.lastUlLoss = 0;
     this.pendingDlLost = false;
     this.pendingUlLost = false;
+    this.testCompletedAt.set(null);
 
     const runSettings: SpeedtestSettings = {
       ...this.settings,
@@ -334,6 +320,7 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
       count_ping: Math.max(1, this.durationPing() * 10),
       loadedLatency: this.loadedLatency(),
     };
+
     this.speedtest.start(runSettings, this.selectedServer());
   }
 

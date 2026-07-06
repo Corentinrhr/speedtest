@@ -10,10 +10,7 @@
     font-weight: 700;
   }
   .p-dialog-content {
-    padding: 0.5rem 1.75rem 1rem;
-  }
-  .p-dialog-footer {
-    padding: 1rem 1.75rem 1.5rem;
+    padding: 0.5rem 1.75rem 1.5rem;
   }
 }
 
@@ -78,14 +75,43 @@
   width: 2rem;
 }
 
+// ── Slider ──
 :host ::ng-deep .settings-slider .p-slider {
   margin: 0.15rem 0.2rem 0.35rem;
+  position: relative;               // anchor for the absolutely-positioned handle
+  height: 6px;                      // rail height
+  background: var(--surface-border);
+  border-radius: 3px;
 }
 :host ::ng-deep .settings-slider .p-slider .p-slider-range {
   background: linear-gradient(90deg, #4f46e5, #7c3aed);
+  height: 100%;
+  border-radius: 3px;
 }
+
+// Recenter the handle vertically on the rail (was sitting below the bar).
 :host ::ng-deep .settings-slider .p-slider .p-slider-handle {
-  border-color: #7c3aed;
+  width: 18px;
+  height: 18px;
+  margin-top: 0;                    // reset any default offset
+  margin-left: -9px;               // center horizontally on the value
+  top: 50%;                        // anchor to the middle of the rail
+  transform: translateY(-50%);     // perfectly center vertically
+  background: #ffffff;
+  border: 2px solid #7c3aed;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+
+  &:hover,
+  &:focus {
+    box-shadow: 0 0 0 6px rgba(124, 58, 237, 0.15);
+  }
+
+  // Keep the vertical centering during hover/focus transforms.
+  &:hover {
+    transform: translateY(-50%);
+  }
 }
 
 .settings-warning {

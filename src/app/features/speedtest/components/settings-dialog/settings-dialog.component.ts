@@ -2,7 +2,6 @@ import { Component, model, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DialogModule } from 'primeng/dialog';
-import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';
 import { SliderModule } from 'primeng/slider';
 import { InputNumberModule } from 'primeng/inputnumber';
@@ -11,7 +10,7 @@ import { InputNumberModule } from 'primeng/inputnumber';
   selector: 'app-settings-dialog',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, DialogModule, ButtonModule,
+    CommonModule, FormsModule, DialogModule,
     CheckboxModule, SliderModule, InputNumberModule,
   ],
   templateUrl: './settings-dialog.component.html',

@@ -120,3 +120,15 @@
   font-weight: 500;
   text-align: center;
 }
+
+// Advanced option row (checkbox + hint, no slider)
+.settings-row-inline {
+  gap: 0.5rem;
+}
+
+.settings-hint {
+  font-size: 0.78rem;
+  color: var(--text-color-secondary);
+  line-height: 1.4;
+  margin: 0;
+}

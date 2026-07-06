@@ -26,6 +26,9 @@ export class SettingsDialogComponent {
   readonly durationDl = model<number>(15);
   readonly durationUl = model<number>(15);
 
+  // Loaded latency: measures latency under load during DL/UL. Enabled by default.
+  readonly loadedLatency = model<boolean>(true);
+
   readonly atLeastOneTest = computed(
     () => this.testPing() || this.testDl() || this.testUl()
   );

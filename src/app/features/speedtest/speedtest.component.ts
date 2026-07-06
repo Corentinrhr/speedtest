@@ -14,13 +14,13 @@ import { ServerSelectorComponent } from '@shared/components/server-selector/serv
 import { ActionBarComponent } from './components/action-bar/action-bar.component';
 import { LatencyCardComponent, PingStats } from './components/latency-card/latency-card.component';
 import { SpeedCardComponent, SpeedStats } from './components/speed-card/speed-card.component';
-import { FinalResultsComponent } from './components/final-results/final-results.component';
+import { FinalResultsComponent, ResultMetric } from './components/final-results/final-results.component';
 import { SettingsDialogComponent } from './components/settings-dialog/settings-dialog.component';
 
 // Shared helpers
 import { DualSample, SpeedSample } from './shared/chart-options.util';
 import {
-  num, fmt, fmtMetric, avg, median, max, min,
+  num, avg, median, max, min,
   latMin, latAvg, latMax, latJitter,
 } from './shared/format.util';
 
@@ -71,6 +71,7 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
   readonly durationDl = signal(15);
   readonly durationUl = signal(15);
   readonly durationPing = signal(5);
+  readonly loadedLatency = signal(true);
 
   // ── Sampling internals ──
   private static readonly MAX_WINDOW_MS = 5 * 60 * 1000;
@@ -155,21 +156,58 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
     avg: avg(this._historyPing()),
     median: median(this._historyPing()),
     max: max(this._historyPing()),
-    jitter: this.jitterStr(),
+    jitter: this.idleJitterSpread(),
   }));
 
-  // ── Final results ──
-  readonly downloadSpeed = computed(() => fmt(this.data().dlStatus));
-  readonly uploadSpeed = computed(() => fmt(this.data().ulStatus));
-  readonly ping = computed(() => fmtMetric(this.data().pingStatus));
+  // ── Final results : average + median per metric ──
+  readonly downloadResult = computed<ResultMetric>(() => ({
+    avg: avg(this._historyDl()),
+    median: median(this._historyDl()),
+  }));
 
-  // Jitter (idle) = spread of the idle latency history.
-  private jitterStr(): string {
+  readonly uploadResult = computed<ResultMetric>(() => ({
+    avg: avg(this._historyUl()),
+    median: median(this._historyUl()),
+  }));
+
+  readonly pingResult = computed<ResultMetric>(() => ({
+    avg: avg(this._historyPing()),
+    median: median(this._historyPing()),
+  }));
+
+  // Idle jitter = successive differences of the idle latency samples.
+  readonly jitterResult = computed<ResultMetric>(() => {
+    const diffs = this.idleJitterDiffs();
+    if (diffs.length === 0) return { avg: 0, median: 0 };
+
+    const mean = diffs.reduce((a, b) => a + b, 0) / diffs.length;
+
+    const sorted = [...diffs].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    const med = sorted.length % 2
+      ? sorted[mid]
+      : (sorted[mid - 1] + sorted[mid]) / 2;
+
+    return { avg: mean, median: med };
+  });
+
+  // ── Idle jitter helpers (shared by pingStats + jitterResult) ──
+  // Absolute successive differences of the idle latency samples.
+  private idleJitterDiffs(): number[] {
+    const vals = this._historyPing().map((s) => s.v).filter((v) => v > 0);
+    const diffs: number[] = [];
+    for (let i = 1; i < vals.length; i++) {
+      diffs.push(Math.abs(vals[i] - vals[i - 1]));
+    }
+    return diffs;
+  }
+
+  // Simple spread (max - min) used for the live latency-card jitter display.
+  private idleJitterSpread(): string {
     const vals = this._historyPing().map((s) => s.v).filter((v) => v > 0);
     if (vals.length < 2) return '--';
     return (Math.max(...vals) - Math.min(...vals)).toFixed(1);
   }
-  readonly jitter = computed(() => this.jitterStr());
 
   constructor() {
     // Sample data on a fixed clock so the number of points matches the duration.
@@ -251,6 +289,8 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
       time_dl_max: this.durationDl(),
       time_ul_max: this.durationUl(),
       count_ping: Math.max(1, this.durationPing() * 10),
+      // Enable/disable loaded latency measurement in the worker.
+      loadedLatency: this.loadedLatency(),
     };
     this.speedtest.start(runSettings, this.selectedServer());
   }

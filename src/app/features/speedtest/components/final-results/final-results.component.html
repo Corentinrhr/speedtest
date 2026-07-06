@@ -1,22 +1,91 @@
-<div class="final-results">
-  <div class="fr-item">
-    <i class="pi pi-arrow-down dl"></i>
-    <span class="fr-label">Download</span>
-    <span class="fr-val">{{ download() }} <small>Mbps</small></span>
+<div class="final-card">
+  <!-- Header -->
+  <div class="fc-header">
+    <div class="fc-header-icon">
+      <i class="pi pi-check-circle"></i>
+    </div>
+    <div class="fc-header-text">
+      <h2>Test Results</h2>
+      <p>Average and median values measured during the test</p>
+    </div>
   </div>
-  <div class="fr-item">
-    <i class="pi pi-arrow-up ul"></i>
-    <span class="fr-label">Upload</span>
-    <span class="fr-val">{{ upload() }} <small>Mbps</small></span>
-  </div>
-  <div class="fr-item">
-    <i class="pi pi-clock pg"></i>
-    <span class="fr-label">Ping</span>
-    <span class="fr-val">{{ ping() }} <small>ms</small></span>
-  </div>
-  <div class="fr-item">
-    <i class="pi pi-wave-pulse jt"></i>
-    <span class="fr-label">Jitter</span>
-    <span class="fr-val">{{ jitter() }} <small>ms</small></span>
+
+  <!-- Metrics grid -->
+  <div class="fc-grid">
+    <!-- Download -->
+    <div class="fc-tile dl">
+      <div class="fc-tile-head">
+        <span class="fc-icon-wrap"><i class="pi pi-arrow-down"></i></span>
+        <span class="fc-title">Download</span>
+      </div>
+      <div class="fc-stats">
+        <div class="fc-stat">
+          <span class="fc-stat-label">Average</span>
+          <span class="fc-stat-val">{{ fmt(download().avg) }}<small>Mbps</small></span>
+        </div>
+        <div class="fc-divider"></div>
+        <div class="fc-stat">
+          <span class="fc-stat-label">Median</span>
+          <span class="fc-stat-val">{{ fmt(download().median) }}<small>Mbps</small></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Upload -->
+    <div class="fc-tile ul">
+      <div class="fc-tile-head">
+        <span class="fc-icon-wrap"><i class="pi pi-arrow-up"></i></span>
+        <span class="fc-title">Upload</span>
+      </div>
+      <div class="fc-stats">
+        <div class="fc-stat">
+          <span class="fc-stat-label">Average</span>
+          <span class="fc-stat-val">{{ fmt(upload().avg) }}<small>Mbps</small></span>
+        </div>
+        <div class="fc-divider"></div>
+        <div class="fc-stat">
+          <span class="fc-stat-label">Median</span>
+          <span class="fc-stat-val">{{ fmt(upload().median) }}<small>Mbps</small></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ping (idle) -->
+    <div class="fc-tile pg">
+      <div class="fc-tile-head">
+        <span class="fc-icon-wrap"><i class="pi pi-clock"></i></span>
+        <span class="fc-title">Ping <em>(idle)</em></span>
+      </div>
+      <div class="fc-stats">
+        <div class="fc-stat">
+          <span class="fc-stat-label">Average</span>
+          <span class="fc-stat-val">{{ fmt(ping().avg) }}<small>ms</small></span>
+        </div>
+        <div class="fc-divider"></div>
+        <div class="fc-stat">
+          <span class="fc-stat-label">Median</span>
+          <span class="fc-stat-val">{{ fmt(ping().median) }}<small>ms</small></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Jitter (idle) -->
+    <div class="fc-tile jt">
+      <div class="fc-tile-head">
+        <span class="fc-icon-wrap"><i class="pi pi-wave-pulse"></i></span>
+        <span class="fc-title">Jitter <em>(idle)</em></span>
+      </div>
+      <div class="fc-stats">
+        <div class="fc-stat">
+          <span class="fc-stat-label">Average</span>
+          <span class="fc-stat-val">{{ fmt(jitter().avg) }}<small>ms</small></span>
+        </div>
+        <div class="fc-divider"></div>
+        <div class="fc-stat">
+          <span class="fc-stat-label">Median</span>
+          <span class="fc-stat-val">{{ fmt(jitter().median) }}<small>ms</small></span>
+        </div>
+      </div>
+    </div>
   </div>
 </div>

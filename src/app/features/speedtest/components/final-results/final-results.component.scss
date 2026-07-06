@@ -1,40 +1,165 @@
 :host { display: block; }
 
-.final-results {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
-  margin-top: 1.25rem;
-
-  @media screen and (max-width: 600px) { grid-template-columns: repeat(2, 1fr); }
-}
-.fr-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 1rem;
-  border-radius: 12px;
+// ── Big results card ──
+.final-card {
+  margin-top: 2rem;
+  border-radius: 18px;
   background: var(--surface-card);
   border: 1px solid var(--surface-border);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+// ── Header ──
+.fc-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem 1.75rem;
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(124, 58, 237, 0.08));
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.fc-header-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  flex-shrink: 0;
 
   i {
-    font-size: 1.1rem;
-    &.dl { color: #667eea; }
-    &.ul { color: #f5576c; }
-    &.pg { color: #4facfe; }
-    &.jt { color: #43e97b; }
+    font-size: 1.5rem;
+    color: #fff;
   }
-  .fr-label {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-color-secondary);
-  }
-  .fr-val {
+}
+
+.fc-header-text {
+  h2 {
     font-size: 1.35rem;
     font-weight: 700;
     color: var(--text-color);
-    small { font-size: 0.7rem; font-weight: 400; color: var(--text-color-secondary); }
+    margin: 0 0 0.15rem;
   }
+  p {
+    font-size: 0.85rem;
+    color: var(--text-color-secondary);
+    margin: 0;
+  }
+}
+
+// ── Grid of metric tiles ──
+.fc-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  padding: 1.75rem;
+
+  @media screen and (max-width: 900px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  @media screen and (max-width: 480px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// ── Individual tile ──
+.fc-tile {
+  position: relative;
+  padding: 1.25rem 1.25rem 1.35rem;
+  border-radius: 14px;
+  background: var(--surface-ground);
+  border: 1px solid var(--surface-border);
+  border-top: 3px solid var(--surface-border);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  }
+
+  // Colored accents per metric
+  &.dl { border-top-color: #4f46e5; .fc-icon-wrap { background: rgba(79, 70, 229, 0.12); i { color: #4f46e5; } } }
+  &.ul { border-top-color: #f5576c; .fc-icon-wrap { background: rgba(245, 87, 108, 0.12); i { color: #f5576c; } } }
+  &.pg { border-top-color: #4facfe; .fc-icon-wrap { background: rgba(79, 172, 254, 0.12); i { color: #4facfe; } } }
+  &.jt { border-top-color: #43e97b; .fc-icon-wrap { background: rgba(67, 233, 123, 0.14); i { color: #22c55e; } } }
+}
+
+.fc-tile-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.fc-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  flex-shrink: 0;
+
+  i { font-size: 1.05rem; }
+}
+
+.fc-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-color);
+
+  em {
+    font-style: normal;
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--text-color-secondary);
+    margin-left: 0.15rem;
+  }
+}
+
+// ── Average / Median row ──
+.fc-stats {
+  display: flex;
+  align-items: stretch;
+  gap: 0.75rem;
+}
+
+.fc-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1;
+}
+
+.fc-stat-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-color-secondary);
+}
+
+.fc-stat-val {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-color);
+  line-height: 1.1;
+  display: flex;
+  align-items: baseline;
+  gap: 0.2rem;
+
+  small {
+    font-size: 0.65rem;
+    font-weight: 400;
+    color: var(--text-color-secondary);
+  }
+}
+
+.fc-divider {
+  width: 1px;
+  background: var(--surface-border);
+  flex-shrink: 0;
 }

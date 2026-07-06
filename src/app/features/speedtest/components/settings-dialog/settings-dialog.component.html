@@ -79,5 +79,18 @@
     @if (!atLeastOneTest()) {
       <p class="settings-warning">Select at least one test.</p>
     }
+
+    <!-- Advanced options -->
+    <p class="settings-section-title">Advanced</p>
+
+    <div class="settings-row settings-row-inline">
+      <div class="settings-check">
+        <p-checkbox [(ngModel)]="loadedLatency" [binary]="true" inputId="chkLoadedLatency" />
+        <label for="chkLoadedLatency">Loaded latency</label>
+      </div>
+      <p class="settings-hint">
+        Measure latency and jitter while the download and upload tests are running.
+      </p>
+    </div>
   </div>
 </p-dialog>

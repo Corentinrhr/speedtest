@@ -3,6 +3,17 @@
 	by Federico Dossena
 	https://github.com/librespeed/speedtest/
 	GNU LGPLv3 License
+
+	>>> FIXES applied (v3):
+	  1. dlLostInst / ulLostInst are now reset after each status report (one-shot),
+	     exactly like pingLostInst, to avoid stale flags and double-counting.
+	  2. Added cumulative loss counters (dlLostCount / ulLostCount / pingLostCount)
+	     so the main thread can use a robust delta pattern and never miss an event.
+	  3. pingTest now uses a local xhr variable instead of the shared xhr[0]
+	     to avoid race conditions between consecutive pings.
+	  4. WARM-UP PING (i === 0 for idle, count === 0 for bgPinger) is no longer
+	     counted in `sent` nor `lost`. This removes false-positive packet loss
+	     caused by the initial DNS + TCP + TLS connection establishment.
 */
 
 // data reported to main thread
@@ -28,9 +39,14 @@ let dlPacketLoss = "";   // percentage 0-100 as string
 let ulPacketLoss = "";   // percentage 0-100 as string
 let dlLostInst = false;  // true for one status cycle when a DL ping was just lost
 let ulLostInst = false;  // true for one status cycle when a UL ping was just lost
+// >>> FIX: cumulative loss counters (delta pattern) <<<
+let dlLostCount = 0;     // total DL losses since test start
+let ulLostCount = 0;     // total UL losses since test start
 // >>> MOD: IDLE packet loss (during pingTest) <<<
 let pingPacketLoss = ""; // percentage 0-100 as string
 let pingLostInst = false;// true for one status cycle when an idle ping was just lost
+// >>> FIX: cumulative idle loss counter (delta pattern) <<<
+let pingLostCount = 0;   // total idle losses since test start
 
 let log = "";
 function tlog(s) {
@@ -99,6 +115,10 @@ function url_sep(url) {
 /*
    MOD: Independent background pinger (loaded latency for DL/UL).
    Also counts packet loss under load.
+
+   >>> FIX v3: the very first ping of each phase (count === 0) is a WARM-UP.
+   It is never counted in `sent`/`lost`, so a slow/failed connection setup
+   under load is not reported as packet loss.
 */
 let bgPinger = {
 	running: false,
@@ -124,10 +144,12 @@ let bgPinger = {
 			dlLoadedPingInst = "";
 			dlPacketLoss = "";
 			dlLostInst = false;
+			dlLostCount = 0; // >>> FIX: reset cumulative counter at phase start
 		} else if (target === "ul") {
 			ulLoadedPingInst = "";
 			ulPacketLoss = "";
 			ulLostInst = false;
+			ulLostCount = 0; // >>> FIX: reset cumulative counter at phase start
 		}
 		this._loop();
 	},
@@ -147,9 +169,11 @@ let bgPinger = {
 		if (this.target === "dl") {
 			dlPacketLoss = loss;
 			dlLostInst = true;
+			dlLostCount++; // >>> FIX: increment cumulative counter on each real loss
 		} else if (this.target === "ul") {
 			ulPacketLoss = loss;
 			ulLostInst = true;
+			ulLostCount++; // >>> FIX: increment cumulative counter on each real loss
 		}
 	},
 
@@ -165,18 +189,30 @@ let bgPinger = {
 			dlLoadedJitter = j;
 			dlLoadedPingInst = inst;
 			dlPacketLoss = loss;
-			dlLostInst = false;
+			// >>> FIX: do NOT force dlLostInst=false here.
+			// The status handler is now the single owner of the one-shot reset,
+			// so a loss that happened between two commits is never swallowed.
 		} else if (this.target === "ul") {
 			ulLoadedPing = p;
 			ulLoadedJitter = j;
 			ulLoadedPingInst = inst;
 			ulPacketLoss = loss;
-			ulLostInst = false;
+			// >>> FIX: same as above for UL.
 		}
 	},
 
 	_onLost: function() {
 		if (!this.running) return;
+
+		// >>> FIX v3: warm-up (count === 0) is NOT counted as a loss.
+		// A failed/slow connection setup under load is not a real packet loss.
+		if (this.count === 0) {
+			this.count++;          // consume the warm-up slot
+			this.prevInstspd = 0;
+			setTimeout(this._loop.bind(this), settings.loadedLatency_interval);
+			return;
+		}
+
 		this.sent++;
 		this.lost++;
 		this.prevInstspd = 0;
@@ -202,6 +238,17 @@ let bgPinger = {
 			settled = true;
 			clearTimeout(timeoutTimer);
 
+			// >>> FIX v3: warm-up (count === 0) only primes the connection.
+			// We don't measure its latency and we don't count it in `sent`.
+			if (this.count === 0) {
+				this.count++;
+				this.prevInstspd = 0;
+				const rttWarm = new Date().getTime() - prevT;
+				const delayWarm = Math.max(0, settings.loadedLatency_interval - rttWarm);
+				setTimeout(this._loop.bind(this), delayWarm);
+				return;
+			}
+
 			let instspd = new Date().getTime() - prevT;
 			if (settings.ping_allowPerformanceApi) {
 				try {
@@ -216,11 +263,12 @@ let bgPinger = {
 			if (instspd < 1) instspd = 1;
 
 			const instjitter = Math.abs(instspd - this.prevInstspd);
-			if (this.count === 0) {
+			// count === 1 is the first *measured* ping (warm-up was count 0).
+			if (this.count === 1) {
 				this.ping = instspd;
 			} else {
 				if (instspd < this.ping) this.ping = instspd;
-				if (this.count === 1) this.jitter = instjitter;
+				if (this.count === 2) this.jitter = instjitter;
 				else this.jitter = instjitter > this.jitter
 					? this.jitter * 0.3 + instjitter * 0.7
 					: this.jitter * 0.8 + instjitter * 0.2;
@@ -278,14 +326,22 @@ this.addEventListener("message", function(e) {
 				ulPacketLoss: ulPacketLoss,
 				dlLostInst: dlLostInst,
 				ulLostInst: ulLostInst,
+				// >>> FIX: expose cumulative counters (delta pattern) <<<
+				dlLostCount: dlLostCount,
+				ulLostCount: ulLostCount,
 				// >>> MOD: idle packet loss <<<
 				pingPacketLoss: pingPacketLoss,
-				pingLostInst: pingLostInst
+				pingLostInst: pingLostInst,
+				// >>> FIX: expose cumulative idle counter (delta pattern) <<<
+				pingLostCount: pingLostCount
 			})
 		);
-		// Reset the one-shot "lost" flag AFTER it has been reported once,
-		// so the main thread doesn't count the same loss multiple times.
+		// >>> FIX: reset ALL one-shot "lost" flags AFTER they have been reported once,
+		// so the main thread never counts the same loss multiple times, and stale
+		// flags cannot survive across status cycles.
 		pingLostInst = false;
+		dlLostInst = false; // <-- FIX
+		ulLostInst = false; // <-- FIX
 	}
 	if (params[0] === "start" && testState === -1) {
 		testState = 0;
@@ -430,9 +486,13 @@ this.addEventListener("message", function(e) {
 		ulPacketLoss = "";
 		dlLostInst = false;
 		ulLostInst = false;
+		// >>> FIX: reset cumulative counters on abort <<<
+		dlLostCount = 0;
+		ulLostCount = 0;
 		// >>> MOD: reset idle packet loss <<<
 		pingPacketLoss = "";
 		pingLostInst = false;
+		pingLostCount = 0; // >>> FIX
 	}
 });
 
@@ -732,6 +792,9 @@ function pingTest(done) {
 	let sent = 0;
 	let lost = 0;
 
+	// >>> FIX: reset cumulative idle counter at phase start <<<
+	pingLostCount = 0;
+
 	xhr = [];
 
 	// Commit the current loss percentage into the shared pingPacketLoss field.
@@ -748,16 +811,31 @@ function pingTest(done) {
 
 		let settled = false;
 
+		// >>> FIX v3: remember whether THIS ping is the warm-up (i === 0).
+		// The warm-up primes DNS + TCP + TLS and must NOT be counted in
+		// sent/lost, otherwise a slow/failed setup shows up as packet loss.
+		const isWarmup = (i === 0);
+
+		// >>> FIX: use a LOCAL xhr instead of the shared xhr[0].
+		// This avoids race conditions where a stale timeout/onerror from a
+		// previous ping could interfere with the current one.
+		let localXhr = new XMLHttpRequest();
+		xhr[0] = localXhr; // kept for clearRequests() compatibility
+
 		// >>> MOD: manual timeout to detect a lost idle ping <<<
 		const timeoutTimer = setTimeout(function() {
 			if (settled) return;
 			settled = true;
-			try { if (xhr[0]) xhr[0].abort(); } catch (e) {}
+			try { localXhr.abort(); } catch (e) {}
 
-			sent++;
-			lost++;
-			commitLoss();
-			pingLostInst = true;   // one-shot flag: the main thread will read it once
+			// >>> FIX v3: a warm-up timeout is NOT a real packet loss.
+			if (!isWarmup) {
+				sent++;
+				lost++;
+				commitLoss();
+				pingLostInst = true;   // one-shot flag: the main thread will read it once
+				pingLostCount++;       // cumulative counter (delta pattern)
+			}
 			prevInstspd = 0;
 			i++;
 			if (i < settings.count_ping) doPing();
@@ -769,13 +847,14 @@ function pingTest(done) {
 			}
 		}, settings.idlePing_timeout);
 
-		xhr[0] = new XMLHttpRequest();
-		xhr[0].onload = function() {
+		localXhr.onload = function() {
 			if (settled) return;
 			settled = true;
 			clearTimeout(timeoutTimer);
 			tverb("pong");
 			if (i === 0) {
+				// Warm-up succeeded: prime prevT, don't measure latency and
+				// don't count this ping (neither sent nor lost).
 				prevT = new Date().getTime();
 			} else {
 				let instspd = new Date().getTime() - prevT;
@@ -804,8 +883,13 @@ function pingTest(done) {
 			}
 			pingStatus = ping.toFixed(2);
 			jitterStatus = jitter.toFixed(2);
-			sent++;
-			commitLoss();
+
+			// >>> FIX v3: only count in `sent` if this is NOT the warm-up.
+			if (!isWarmup) {
+				sent++;
+				commitLoss();
+			}
+
 			i++;
 			tverb("ping: " + pingStatus + " jitter: " + jitterStatus + " loss: " + pingPacketLoss + "%");
 			if (i < settings.count_ping) doPing();
@@ -817,20 +901,26 @@ function pingTest(done) {
 			}
 		}.bind(this);
 
-		xhr[0].onerror = function() {
+		localXhr.onerror = function() {
 			if (settled) return;
 			settled = true;
 			clearTimeout(timeoutTimer);
 			tverb("ping failed");
 
-			// >>> MOD: network error = lost packet, whatever xhr_ignoreErrors is <<<
-			sent++;
-			lost++;
-			commitLoss();
-			pingLostInst = true;
+			// >>> FIX v3: a warm-up network error is NOT counted as loss.
+			// It may just be the first DNS resolution / TLS handshake failing.
+			if (!isWarmup) {
+				sent++;
+				lost++;
+				commitLoss();
+				pingLostInst = true;
+				pingLostCount++;
+			}
 			prevInstspd = 0;
 
-			if (settings.xhr_ignoreErrors === 0) {
+			// >>> FIX v3: a single failed warm-up must not fail the whole test
+			// in the "hard fail" mode either.
+			if (settings.xhr_ignoreErrors === 0 && !isWarmup) {
 				pingStatus = "Fail";
 				jitterStatus = "Fail";
 				clearRequests();
@@ -849,8 +939,8 @@ function pingTest(done) {
 			}
 		}.bind(this);
 
-		xhr[0].open("GET", settings.url_ping + url_sep(settings.url_ping) + (settings.mpot ? "cors=true&" : "") + "r=" + Math.random(), true);
-		xhr[0].send();
+		localXhr.open("GET", settings.url_ping + url_sep(settings.url_ping) + (settings.mpot ? "cors=true&" : "") + "r=" + Math.random(), true);
+		localXhr.send();
 	}.bind(this);
 	doPing();
 }

@@ -80,9 +80,9 @@ export function buildPingOptions() {
 
 // Speed chart with a second line for loaded latency + a marker dataset for packet loss.
 export function buildDualChart(h: DualSample[], color: string) {
-  // Loss markers are plotted on the latency axis (y1) at each lost sample.
-  // We place the cross at the latency value if known, otherwise at 0.
-  const lossData = h.map((s) => (s.lost ? (s.lat ?? 0) : null));
+  // >>> FIX: plot loss markers on the SPEED axis (y) at the speed value,
+  // so they are always visible on the chart (previously placed on y1 at 0 => invisible).
+  const lossData = h.map((s) => (s.lost ? s.v : null));
   const hasLoss = lossData.some((v) => v !== null);
 
   const datasets: unknown[] = [
@@ -121,16 +121,16 @@ export function buildDualChart(h: DualSample[], color: string) {
       label: 'Packet loss',
       data: lossData,
       borderColor: 'transparent',
-      backgroundColor: 'transparent',
+      backgroundColor: COLOR_LOSS,
       showLine: false,
       pointStyle: 'crossRot',      // draws an "x" marker
-      pointRadius: 8,
-      pointHoverRadius: 11,
+      pointRadius: 9,
+      pointHoverRadius: 12,
       pointBorderColor: COLOR_LOSS,
       pointBorderWidth: 3,
       pointBackgroundColor: COLOR_LOSS,
       spanGaps: false,
-      yAxisID: 'y1',
+      yAxisID: 'y',                // >>> FIX: same axis as the speed line
     });
   }
 

@@ -97,6 +97,22 @@
   &.dl  { border-left-color: #4f46e5; }
   &.ul  { border-left-color: #f5576c; }
   &.lat { border-left-color: #4b5563; }
+
+  // >>> MOD: packet loss KPI box <<<
+  // Neutral (green) accent by default: no loss is a good thing.
+  &.loss {
+    border-left-color: #22c55e;
+
+    // When there is actual packet loss, switch to a red alert style.
+    &.has-loss {
+      border-left-color: #ef4444;
+      background: rgba(239, 68, 68, 0.06);
+
+      .kpi-val {
+        color: #ef4444;
+      }
+    }
+  }
 }
 
 .kpi-label {

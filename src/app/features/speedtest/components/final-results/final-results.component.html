@@ -12,7 +12,7 @@
     <!-- Date / time of the test -->
     <div class="fc-header-date">
       <i class="pi pi-calendar"></i>
-      <span>{{ fmtDate(testDate()) }}</span>
+      <span></span>
     </div>
   </div>
 
@@ -27,12 +27,12 @@
       <div class="fc-stats">
         <div class="fc-stat">
           <span class="fc-stat-label">Average</span>
-          <span class="fc-stat-val">{{ fmt(download().avg) }}<small>Mbps</small></span>
+          <span class="fc-stat-val"><small>Mbps</small></span>
         </div>
         <div class="fc-divider"></div>
         <div class="fc-stat">
           <span class="fc-stat-label">Median</span>
-          <span class="fc-stat-val">{{ fmt(download().median) }}<small>Mbps</small></span>
+          <span class="fc-stat-val"><small>Mbps</small></span>
         </div>
       </div>
     </div>
@@ -46,12 +46,12 @@
       <div class="fc-stats">
         <div class="fc-stat">
           <span class="fc-stat-label">Average</span>
-          <span class="fc-stat-val">{{ fmt(upload().avg) }}<small>Mbps</small></span>
+          <span class="fc-stat-val"><small>Mbps</small></span>
         </div>
         <div class="fc-divider"></div>
         <div class="fc-stat">
           <span class="fc-stat-label">Median</span>
-          <span class="fc-stat-val">{{ fmt(upload().median) }}<small>Mbps</small></span>
+          <span class="fc-stat-val"><small>Mbps</small></span>
         </div>
       </div>
     </div>
@@ -65,12 +65,12 @@
       <div class="fc-stats">
         <div class="fc-stat">
           <span class="fc-stat-label">Average</span>
-          <span class="fc-stat-val">{{ fmt(ping().avg) }}<small>ms</small></span>
+          <span class="fc-stat-val"><small>ms</small></span>
         </div>
         <div class="fc-divider"></div>
         <div class="fc-stat">
           <span class="fc-stat-label">Median</span>
-          <span class="fc-stat-val">{{ fmt(ping().median) }}<small>ms</small></span>
+          <span class="fc-stat-val"><small>ms</small></span>
         </div>
       </div>
     </div>
@@ -83,13 +83,32 @@
       </div>
       <div class="fc-stats">
         <div class="fc-stat">
-          <span class="fc-stat-label">Max</span>
-          <span class="fc-stat-val">{{ fmt(jitter().max) }}<small>ms</small></span>
+          <span class="fc-stat-label">Average</span>
+          <span class="fc-stat-val"><small>ms</small></span>
         </div>
         <div class="fc-divider"></div>
         <div class="fc-stat">
           <span class="fc-stat-label">Median</span>
-          <span class="fc-stat-val">{{ fmt(jitter().median) }}<small>ms</small></span>
+          <span class="fc-stat-val"><small>ms</small></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Packet Loss (DL + UL under load) -->
+    <div class="fc-tile ls" [class.has-loss]="downloadLoss() > 0 || uploadLoss() > 0">
+      <div class="fc-tile-head">
+        <span class="fc-icon-wrap"><i class="pi pi-times-circle"></i></span>
+        <span class="fc-title">Packet Loss <em>(loaded)</em></span>
+      </div>
+      <div class="fc-stats">
+        <div class="fc-stat">
+          <span class="fc-stat-label">Download</span>
+          <span class="fc-stat-val"><small>%</small></span>
+        </div>
+        <div class="fc-divider"></div>
+        <div class="fc-stat">
+          <span class="fc-stat-label">Upload</span>
+          <span class="fc-stat-val"><small>%</small></span>
         </div>
       </div>
     </div>

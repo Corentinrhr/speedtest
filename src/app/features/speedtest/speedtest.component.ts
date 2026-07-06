@@ -85,6 +85,16 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
   private lastDlLat: number | null = null;
   private lastUlLat: number | null = null;
 
+  // >>> FIX: accumulate the "lost" flag between two samples so we never miss it.
+  // dlLostInst / ulLostInst are only true for one worker cycle (~200ms),
+  // while we sample every 250ms => without accumulation the loss is often missed.
+  private pendingDlLost = false;
+  private pendingUlLost = false;
+
+  // >>> Live packet loss tracker (percentages). Persisted after the test ends.
+  private lastDlLoss = 0;
+  private lastUlLoss = 0;
+
   // Expose history to the template.
   readonly historyDl = this._historyDl.asReadonly();
   readonly historyUl = this._historyUl.asReadonly();
@@ -128,6 +138,17 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
   readonly ulProgress = computed(() => Math.round(this.data().ulProgress * 100));
   readonly pingProgress = computed(() => Math.round(this.data().pingProgress * 100));
 
+  // >>> Live packet loss. Use the live worker value while running,
+  // and fall back to the last known value once finished.
+  readonly dlLoss = computed(() => {
+    const live = num(this.data().dlPacketLoss);
+    return this.finished() ? this.lastDlLoss : live;
+  });
+  readonly ulLoss = computed(() => {
+    const live = num(this.data().ulPacketLoss);
+    return this.finished() ? this.lastUlLoss : live;
+  });
+
   // ── Aggregated stats passed to the cards ──
   readonly dlStats = computed<SpeedStats>(() => ({
     min: min(this._historyDl()),
@@ -138,6 +159,7 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
     latAvg: latAvg(this._historyDl()),
     latMax: latMax(this._historyDl()),
     latJitter: latJitter(this._historyDl()),
+    packetLoss: this.dlLoss(),
   }));
 
   readonly ulStats = computed<SpeedStats>(() => ({
@@ -149,6 +171,7 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
     latAvg: latAvg(this._historyUl()),
     latMax: latMax(this._historyUl()),
     latJitter: latJitter(this._historyUl()),
+    packetLoss: this.ulLoss(),
   }));
 
   readonly pingStats = computed<PingStats>(() => ({
@@ -191,8 +214,11 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
     return { avg: mean, median: med };
   });
 
+  // >>> Final packet loss (DL + UL) exposed to the results card.
+  readonly downloadLossResult = computed(() => this.dlLoss());
+  readonly uploadLossResult = computed(() => this.ulLoss());
+
   // ── Idle jitter helpers (shared by pingStats + jitterResult) ──
-  // Absolute successive differences of the idle latency samples.
   private idleJitterDiffs(): number[] {
     const vals = this._historyPing().map((s) => s.v).filter((v) => v > 0);
     const diffs: number[] = [];
@@ -202,7 +228,6 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
     return diffs;
   }
 
-  // Simple spread (max - min) used for the live latency-card jitter display.
   private idleJitterSpread(): string {
     const vals = this._historyPing().map((s) => s.v).filter((v) => v > 0);
     if (vals.length < 2) return '--';
@@ -210,11 +235,18 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
   }
 
   constructor() {
-    // Sample data on a fixed clock so the number of points matches the duration.
-    // data() changes on every worker status (~200ms), so this effect re-runs often.
     effect(() => {
       const d = this.data();
       if (!this.running()) return;
+
+      // >>> FIX: track packet loss + accumulate the "lost" flag on EVERY worker
+      // status cycle (not only when we sample), otherwise the one-shot flag is missed.
+      const dlLossNow = num(d.dlPacketLoss);
+      const ulLossNow = num(d.ulPacketLoss);
+      if (dlLossNow > 0) this.lastDlLoss = dlLossNow;
+      if (ulLossNow > 0) this.lastUlLoss = ulLossNow;
+      if (d.dlLostInst) this.pendingDlLost = true;
+      if (d.ulLostInst) this.pendingUlLost = true;
 
       const now = Date.now();
       if (now - this.lastSampleAt < SpeedtestComponent.SAMPLE_INTERVAL_MS) return;
@@ -228,16 +260,22 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
         if (v <= 0) return;
         const inst = num(d.dlLoadedPingInst);
         if (inst > 0) this.lastDlLat = inst;
+        // >>> FIX: use (and reset) the accumulated lost flag.
+        const lost = this.pendingDlLost;
+        this.pendingDlLost = false;
         this._historyDl.update((h) =>
-          [...h, { t: now, v, lat: this.lastDlLat }].filter((s) => s.t >= cutoff)
+          [...h, { t: now, v, lat: this.lastDlLat, lost }].filter((s) => s.t >= cutoff)
         );
       } else if (phase === 'upload') {
         const v = num(d.ulStatus);
         if (v <= 0) return;
         const inst = num(d.ulLoadedPingInst);
         if (inst > 0) this.lastUlLat = inst;
+        // >>> FIX: use (and reset) the accumulated lost flag.
+        const lost = this.pendingUlLost;
+        this.pendingUlLost = false;
         this._historyUl.update((h) =>
-          [...h, { t: now, v, lat: this.lastUlLat }].filter((s) => s.t >= cutoff)
+          [...h, { t: now, v, lat: this.lastUlLat, lost }].filter((s) => s.t >= cutoff)
         );
       } else if (phase === 'ping') {
         const v = num(d.pingInst) || num(d.pingStatus);
@@ -282,6 +320,11 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
     this.lastSampleAt = 0;
     this.lastDlLat = null;
     this.lastUlLat = null;
+    // >>> FIX: reset packet loss trackers + pending flags.
+    this.lastDlLoss = 0;
+    this.lastUlLoss = 0;
+    this.pendingDlLost = false;
+    this.pendingUlLost = false;
 
     const runSettings: SpeedtestSettings = {
       ...this.settings,
@@ -289,7 +332,6 @@ export class SpeedtestComponent implements OnInit, OnDestroy {
       time_dl_max: this.durationDl(),
       time_ul_max: this.durationUl(),
       count_ping: Math.max(1, this.durationPing() * 10),
-      // Enable/disable loaded latency measurement in the worker.
       loadedLatency: this.loadedLatency(),
     };
     this.speedtest.start(runSettings, this.selectedServer());

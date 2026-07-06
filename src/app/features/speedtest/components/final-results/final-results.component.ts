@@ -6,12 +6,6 @@ export interface ResultMetric {
   median: number;
 }
 
-// Jitter uses a different pair of stats: max spread + median of successive diffs.
-export interface JitterMetric {
-  max: number;
-  median: number;
-}
-
 @Component({
   selector: 'app-final-results',
   standalone: true,
@@ -20,26 +14,37 @@ export interface JitterMetric {
   styleUrl: './final-results.component.scss',
 })
 export class FinalResultsComponent {
-  readonly download = input.required<ResultMetric>();
-  readonly upload = input.required<ResultMetric>();
-  readonly ping = input.required<ResultMetric>();
-  readonly jitter = input.required<JitterMetric>();
+  readonly download = input<ResultMetric>({ avg: 0, median: 0 });
+  readonly upload = input<ResultMetric>({ avg: 0, median: 0 });
+  readonly ping = input<ResultMetric>({ avg: 0, median: 0 });
+  readonly jitter = input<ResultMetric>({ avg: 0, median: 0 });
+
+  // Packet loss percentages for DL and UL (default 0).
+  readonly downloadLoss = input<number>(0);
+  readonly uploadLoss = input<number>(0);
 
   // Timestamp of when the test finished (defaults to "now" if not provided).
   readonly testDate = input<Date>(new Date());
 
   // Format helper: "--" when no data.
-  fmt(n: number): string {
-    if (!n || n <= 0) return '--';
+  fmt(n: number | undefined | null): string {
+    if (n === undefined || n === null || isNaN(n) || n <= 0) return '--';
     return n < 10 ? n.toFixed(2) : n < 100 ? n.toFixed(1) : n.toFixed(0);
   }
 
+  // Packet loss formatter (always show, "0" included).
+  fmtLoss(n: number | undefined | null): string {
+    if (n === undefined || n === null || isNaN(n)) return '--';
+    return n.toFixed(n < 10 ? 1 : 0);
+  }
+
   // Format the test date as "DD/MM/YYYY HH:mm:ss".
-  fmtDate(d: Date): string {
+  fmtDate(d: Date | undefined | null): string {
+    const dd = d ?? new Date();
     const p = (x: number) => String(x).padStart(2, '0');
     return (
-      `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ` +
-      `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+      `${p(dd.getDate())}/${p(dd.getMonth() + 1)}/${dd.getFullYear()} ` +
+      `${p(dd.getHours())}:${p(dd.getMinutes())}:${p(dd.getSeconds())}`
     );
   }
 }

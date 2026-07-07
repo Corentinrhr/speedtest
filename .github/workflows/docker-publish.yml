@@ -18,6 +18,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Verify lockfile exists in repo
+        run: |
+          echo "Repo root contents:"
+          ls -la
+          if [ ! -f package-lock.json ]; then
+            echo "::error::package-lock.json is missing from the repository. Run 'npm install' locally and commit it."
+            exit 1
+          fi
+          echo "package-lock.json found ($(wc -l < package-lock.json) lines)"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -29,10 +40,10 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       # Tagging strategy:
-      #   - on 'master'        -> 'latest' AND 'master'
-      #   - on any other branch -> the sanitized branch name
-      #   - on a git tag (v*)   -> the semver tag
-      #   - always              -> the short git SHA
+      #   - on 'master'          -> 'latest' AND 'master'
+      #   - on any other branch  -> the sanitized branch name
+      #   - on a git tag (v*)    -> the semver tag
+      #   - always               -> the short git SHA
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -53,7 +64,6 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # Multi-arch build (amd64 + arm64)
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max

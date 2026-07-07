@@ -7,6 +7,13 @@ FROM node:20-alpine AS frontend-build
 
 WORKDIR /app
 COPY package.json package-lock.json ./
+RUN echo "== Build context check ==" \
+    && ls -la \
+    && test -f package-lock.json \
+        && echo "OK: package-lock.json found ($(wc -l < package-lock.json) lines)" \
+        || (echo "FATAL: package-lock.json missing from build context" && exit 1)
+
+# Reproducible install from the lockfile.
 RUN npm ci
 
 # Copy sources and build for production
@@ -23,7 +30,6 @@ RUN mkdir -p /app/www \
 # ============================================================
 FROM php:8.3-fpm-alpine AS runtime
 
-# Install nginx + supervisor to run both processes
 RUN apk add --no-cache nginx supervisor curl \
     && mkdir -p /run/nginx /var/www/html
 
@@ -40,12 +46,10 @@ RUN mkdir -p /var/www/html/backend \
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Permissions
 RUN chown -R www-data:www-data /var/www/html
 
 EXPOSE 80
 
-# Simple healthcheck hitting the backend empty endpoint
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD curl -fsS http://localhost:80/backend/empty.php || exit 1
 

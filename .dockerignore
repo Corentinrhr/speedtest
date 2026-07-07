@@ -1,0 +1,12 @@
+node_modules
+dist
+.angular
+.git
+.github
+.vscode
+*.log
+npm-debug.log*
+.env
+.env.*
+docker-compose.yml
+README.md

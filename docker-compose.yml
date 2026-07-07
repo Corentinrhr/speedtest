@@ -1,0 +1,16 @@
+services:
+  librespeed:
+    image: corentinrhr/librespeed:${IMAGE_TAG:-latest}
+    container_name: librespeed
+    restart: unless-stopped
+    sysctls:
+      net.ipv4.tcp_congestion_control: ${TCP_CC:-cubic}
+    ports:
+      - "${HOST_PORT:-8080}:80"
+
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:80/backend/empty.php"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

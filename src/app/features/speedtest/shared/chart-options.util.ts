@@ -5,35 +5,34 @@ export const COLOR_UL = '#f5576c';   // red         -> Upload
 export const COLOR_LAT = '#4b5563';  // dark gray   -> Loaded latency
 export const COLOR_LOSS = '#ef4444'; // red         -> Packet loss markers
 
-// >>> Fixed Y position for packet loss markers.
-// - On the speed cards, markers sit on the LATENCY axis (y1) at 2000 ms,
-//   so they don't overlap the speed curve.
-// - On the idle latency chart (single axis in ms), they also sit at 2000 ms.
+// Fixed Y position for packet loss markers on the LATENCY chart.
+// Placed near the top of the latency axis so they clearly stand out from the
+// latency curve without overlapping it.
 export const LOSS_MARKER_Y = 2000;
 
 export interface DualSample { t: number; v: number; lat: number | null; lost?: boolean; }
 export interface SpeedSample { t: number; v: number; lost?: boolean; }
 
-// Chart options for the speed cards: dual Y axes (speed + loaded latency).
-export function buildDualOptions(speedColor: string, latColor: string) {
+/* ============================================================
+   SPEED CHART (top) — single axis: Mb/s
+   ============================================================ */
+
+export function buildSpeedOptions(speedColor: string) {
   return {
     maintainAspectRatio: false,
     animation: { duration: 250 },
     interaction: { mode: 'index', intersect: false },
     plugins: {
-      legend: { display: true, labels: { color: '#94a3b8', usePointStyle: true } },
+      // >>> Legend hidden (no 'Speed' label / point on top of the chart).
+      legend: { display: false },
       tooltip: {
         enabled: true,
         callbacks: {
           label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) => {
             const label = ctx.dataset.label ?? '';
             const val = ctx.parsed.y;
-            if (label.toLowerCase().includes('packet loss')) {
-              return val === null || val === undefined ? '' : 'Packet lost';
-            }
             if (val === null || val === undefined) return `${label}: --`;
-            const unit = label.toLowerCase().includes('latency') ? ' ms' : ' Mb/s';
-            return `${label}: ${val.toFixed(2)}${unit}`;
+            return `${label}: ${val.toFixed(2)} Mb/s`;
           },
         },
       },
@@ -47,18 +46,137 @@ export function buildDualOptions(speedColor: string, latColor: string) {
         beginAtZero: true,
         title: { display: true, text: 'Mb/s', color: speedColor },
       },
-      y1: {
-        type: 'linear', position: 'right',
-        grid: { drawOnChartArea: false },
-        ticks: { color: latColor },
+    },
+  };
+}
+
+export function buildSpeedChart(h: DualSample[], color: string) {
+  return {
+    labels: h.map((s) => fmtClock(s.t)),
+    datasets: [
+      {
+        label: 'Speed',
+        data: h.map((s) => s.v),
+        borderColor: color,
+        backgroundColor: color + '14',
+        fill: true,
+        tension: 0.4,
+        pointRadius: 3,
+        pointHoverRadius: 6,
+        pointBackgroundColor: color,
+        borderWidth: 2.5,
+        yAxisID: 'y',
+      },
+    ],
+  };
+}
+
+/* ============================================================
+   LATENCY + PACKET LOSS CHART (bottom) — single axis: ms
+   ============================================================ */
+
+export function buildLatencyOptions() {
+  return {
+    maintainAspectRatio: false,
+    animation: { duration: 250 },
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      // >>> Legend hidden (no 'Loaded latency' label / point on top of the chart).
+      legend: { display: false },
+      tooltip: {
+        enabled: true,
+        callbacks: {
+          label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) => {
+            const label = ctx.dataset.label ?? '';
+            const val = ctx.parsed.y;
+            if (label.toLowerCase().includes('packet loss')) {
+              return val === null || val === undefined ? '' : 'Packet lost';
+            }
+            if (val === null || val === undefined) return `${label}: --`;
+            return `${label}: ${val.toFixed(2)} ms`;
+          },
+        },
+      },
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#94a3b8', maxTicksLimit: 8, autoSkip: true } },
+      y: {
+        type: 'linear', position: 'left',
+        grid: { color: 'rgba(148,163,184,0.12)' },
+        ticks: { color: COLOR_LAT },
         beginAtZero: true,
-        title: { display: true, text: 'Latency (ms)', color: latColor },
+        title: { display: true, text: 'Latency (ms)', color: COLOR_LAT },
       },
     },
   };
 }
 
-// Chart options for the latency card: single Y axis (ms).
+/*
+   Build the latency + packet-loss chart with its OWN time labels.
+
+   >>> Independent time scale:
+   The latency samples and the packet-loss markers are merged into a single
+   ordered timeline (by timestamp). Latency points and loss markers therefore
+   share the same X axis and "follow each other" chronologically, but a loss
+   marker never sits on the exact same X slot as a latency point unless they
+   truly share the same timestamp — because each distinct timestamp gets its
+   own label. This keeps markers visually next to (not on top of) the curve.
+*/
+export function buildLatencyChart(h: DualSample[]) {
+  // 1. Build a merged, de-duplicated, time-ordered set of timestamps coming
+  //    from BOTH latency points and loss events.
+  const points = h
+    .map((s) => ({ t: s.t, lat: s.lat, lost: !!s.lost }))
+    .sort((a, b) => a.t - b.t);
+
+  const labels = points.map((p) => fmtClock(p.t));
+
+  const latData = points.map((p) => (p.lost ? null : p.lat));
+  const lossData = points.map((p) => (p.lost ? LOSS_MARKER_Y : null));
+  const hasLoss = lossData.some((v) => v !== null);
+
+  const datasets: unknown[] = [
+    {
+      label: 'Loaded latency',
+      data: latData,
+      borderColor: COLOR_LAT,
+      backgroundColor: COLOR_LAT + '14',
+      fill: false,
+      tension: 0.3,
+      pointRadius: 3,
+      pointHoverRadius: 6,
+      pointBackgroundColor: COLOR_LAT,
+      borderWidth: 2,
+      spanGaps: true,
+      yAxisID: 'y',
+    },
+  ];
+
+  if (hasLoss) {
+    datasets.push({
+      label: 'Packet loss',
+      data: lossData,
+      borderColor: 'transparent',
+      backgroundColor: COLOR_LOSS,
+      showLine: false,
+      pointStyle: 'crossRot',
+      pointRadius: 9,
+      pointHoverRadius: 12,
+      pointBorderColor: COLOR_LOSS,
+      pointBorderWidth: 3,
+      pointBackgroundColor: COLOR_LOSS,
+      spanGaps: false,
+      yAxisID: 'y',
+    });
+  }
+
+  return { labels, datasets };
+}
+
+/* ============================================================
+   IDLE LATENCY CHART (unchanged) — used by the latency-card
+   ============================================================ */
+
 export function buildPingOptions() {
   return {
     maintainAspectRatio: false,
@@ -87,71 +205,7 @@ export function buildPingOptions() {
   };
 }
 
-// Speed chart with a second line for loaded latency + a marker dataset for packet loss.
-export function buildDualChart(h: DualSample[], color: string) {
-  // >>> FIX: plot loss markers on the LATENCY axis (y1) at LOSS_MARKER_Y = 2000 ms
-  // instead of the speed axis. This way they no longer overlap the speed curve.
-  const lossData = h.map((s) => (s.lost ? LOSS_MARKER_Y : null));
-  const hasLoss = lossData.some((v) => v !== null);
-
-  const datasets: unknown[] = [
-    {
-      label: 'Speed',
-      data: h.map((s) => s.v),
-      borderColor: color,
-      backgroundColor: color + '14',
-      fill: true,
-      tension: 0.4,
-      pointRadius: 3,
-      pointHoverRadius: 6,
-      pointBackgroundColor: color,
-      borderWidth: 2.5,
-      yAxisID: 'y',
-    },
-    {
-      label: 'Loaded latency',
-      data: h.map((s) => s.lat),
-      borderColor: COLOR_LAT,
-      backgroundColor: 'transparent',
-      fill: false,
-      tension: 0.3,
-      pointRadius: 3,
-      pointHoverRadius: 6,
-      pointBackgroundColor: COLOR_LAT,
-      borderWidth: 1.5,
-      spanGaps: true,
-      yAxisID: 'y1',
-    },
-  ];
-
-  if (hasLoss) {
-    datasets.push({
-      label: 'Packet loss',
-      data: lossData,
-      borderColor: 'transparent',
-      backgroundColor: COLOR_LOSS,
-      showLine: false,
-      pointStyle: 'crossRot',
-      pointRadius: 9,
-      pointHoverRadius: 12,
-      pointBorderColor: COLOR_LOSS,
-      pointBorderWidth: 3,
-      pointBackgroundColor: COLOR_LOSS,
-      spanGaps: false,
-      // >>> FIX: put loss markers on the latency axis, not the speed axis <<<
-      yAxisID: 'y1',
-    });
-  }
-
-  return {
-    labels: h.map((s) => fmtClock(s.t)),
-    datasets,
-  };
-}
-
-// Idle latency chart with hoverable points + optional packet-loss markers.
 export function buildPingChart(h: SpeedSample[], color: string) {
-  // The idle chart only has one Y axis (ms), so loss markers stay on it.
   const lossData = h.map((s) => (s.lost ? LOSS_MARKER_Y : null));
   const hasLoss = lossData.some((v) => v !== null);
 

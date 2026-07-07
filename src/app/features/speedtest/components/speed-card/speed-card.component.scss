@@ -71,7 +71,36 @@
   }
 }
 
-.chart-panel { min-height: 380px; }
+// >>> Two stacked charts (throughput on top, latency & loss below) <<<
+.charts-panel {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.chart-block {
+  min-width: 0;
+  width: 100%;
+}
+
+.chart-block-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-color-secondary);
+  margin-bottom: 0.4rem;
+  padding-left: 0.15rem;
+}
+
+.chart-speed { min-height: 200px; }
+.chart-latency {
+  min-height: 180px;
+  // Subtle separator to visually distinguish the two graphs.
+  padding-top: 1rem;
+  border-top: 1px dashed var(--surface-border);
+}
 
 .kpi-grid {
   display: grid;
@@ -98,12 +127,10 @@
   &.ul  { border-left-color: #f5576c; }
   &.lat { border-left-color: #4b5563; }
 
-  // >>> MOD: packet loss KPI box <<<
-  // Neutral (green) accent by default: no loss is a good thing.
+  // Packet loss KPI box: green by default, red on actual loss.
   &.loss {
     border-left-color: #22c55e;
 
-    // When there is actual packet loss, switch to a red alert style.
     &.has-loss {
       border-left-color: #ef4444;
       background: rgba(239, 68, 68, 0.06);

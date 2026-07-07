@@ -53,8 +53,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # Multi-arch build (amd64 + arm64). Remove arm64 if you don't need it
-          # to speed up the build significantly.
+          # Multi-arch build (amd64 + arm64)
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max

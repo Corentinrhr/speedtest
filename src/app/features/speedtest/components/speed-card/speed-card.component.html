@@ -22,8 +22,17 @@
           />
         </div>
 
-        <div class="chart-panel">
-          <p-chart type="line" [data]="chartData()" [options]="chartOptions()" height="380px" />
+        <!-- Two stacked charts: speed (top) + latency & packet loss (bottom) -->
+        <div class="charts-panel">
+          <div class="chart-block chart-speed">
+            <div class="chart-block-title">Throughput</div>
+            <p-chart type="line" [data]="speedChartData()" [options]="speedChartOptions()" height="200px" />
+          </div>
+
+          <div class="chart-block chart-latency">
+            <div class="chart-block-title">Latency &amp; Packet Loss</div>
+            <p-chart type="line" [data]="latencyChartData()" [options]="latencyChartOptions()" height="180px" />
+          </div>
         </div>
       </div>
 

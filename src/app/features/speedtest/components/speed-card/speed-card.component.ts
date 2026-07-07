@@ -5,8 +5,9 @@ import { ChartModule } from 'primeng/chart';
 import { GaugeComponent } from '../gauge/gauge.component';
 import { fmtNum, fmtLat } from '../../shared/format.util';
 import {
-  DualSample, COLOR_DL, COLOR_UL, COLOR_LAT,
-  buildDualChart, buildDualOptions,
+  DualSample, COLOR_DL, COLOR_UL,
+  buildSpeedChart, buildSpeedOptions,
+  buildLatencyChart, buildLatencyOptions,
 } from '../../shared/chart-options.util';
 
 const SPEED_TICKS = [0, 1, 10, 50, 100, 1000] as const;
@@ -53,8 +54,15 @@ export class SpeedCardComponent {
 
   private readonly color = computed(() => (this.isDl() ? COLOR_DL : COLOR_UL));
 
-  readonly chartData = computed(() => buildDualChart(this.history(), this.color()));
-  readonly chartOptions = computed(() => buildDualOptions(this.color(), COLOR_LAT));
+  // >>> Two separate charts, stacked vertically:
+  //   1. Speed chart (top)      -> Mb/s
+  //   2. Latency + loss (bottom) -> ms, with its own time labels so latency
+  //      points and packet-loss markers follow each other chronologically.
+  readonly speedChartData = computed(() => buildSpeedChart(this.history(), this.color()));
+  readonly speedChartOptions = computed(() => buildSpeedOptions(this.color()));
+
+  readonly latencyChartData = computed(() => buildLatencyChart(this.history()));
+  readonly latencyChartOptions = computed(() => buildLatencyOptions());
 
   fmtNum = fmtNum;
   fmtLat = fmtLat;

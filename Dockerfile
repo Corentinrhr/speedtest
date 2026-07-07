@@ -6,9 +6,7 @@
 FROM node:20-alpine AS frontend-build
 
 WORKDIR /app
-
-# Install dependencies first (better layer caching)
-COPY package.json package-lock.json* ./
+COPY package.json package-lock.json ./
 RUN npm ci
 
 # Copy sources and build for production
@@ -16,7 +14,6 @@ COPY . .
 RUN npm run build:prod
 
 # The Angular build output goes to dist/<project>/browser with @angular/build.
-# We normalize it to a predictable /app/www folder.
 RUN mkdir -p /app/www \
     && cp -r dist/librespeed-frontend/browser/* /app/www/ 2>/dev/null \
     || cp -r dist/*/browser/* /app/www/

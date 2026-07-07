@@ -2,7 +2,6 @@ results/idObfuscation_salt.php
 backend/getIP_serverLocation.php
 db-dir/
 .vscode/
-package-lock.json
 playwright-report/
 test-results/
 results/speedtest_telemetry.db
